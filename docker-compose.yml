@@ -1,0 +1,67 @@
+services:
+  # ==========================================
+  # PostgreSQL Database Service
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: delivery_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_secure_pass_2026}
+      POSTGRES_DB: ${DB_NAME:-delivery_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-delivery_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - delivery_network
+
+  # ==========================================
+  # Go REST API Service
+  # ==========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delivery_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENVIRONMENT=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres_secure_pass_2026}
+      - DB_NAME=${DB_NAME:-delivery_db}
+      - DB_SSLMODE=disable
+      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production-12345}
+      - JWT_EXPIRES_IN_HOURS=72
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - delivery_network
+
+volumes:
+  postgres_data:
+    name: delivery_postgres_data
+
+networks:
+  delivery_network:
+    name: delivery_network
+    driver: bridge
