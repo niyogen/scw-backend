@@ -35,14 +35,15 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 		"status":    "UP",
 		"timestamp": time.Now().Format(time.RFC3339),
 		"database":  dbStatus,
-		"service":   "delivery-service-api",
+		"service":   "sewa-backend-api",
 		"version":   "1.0.0",
 	})
 }
 
 // RootHandler welcome endpoint
 func (h *HealthHandler) RootHandler(c *gin.Context) {
-	utils.JSONSuccess(c, http.StatusOK, "Household & Delivery Service API is running smoothly", gin.H{
+	utils.JSONSuccess(c, http.StatusOK, "Sewa Household & Maintenance Service API is running smoothly", gin.H{
+		"app":     "Sewa",
 		"version": "1.0.0",
 		"docs":    "/api/v1",
 		"health":  "/health",

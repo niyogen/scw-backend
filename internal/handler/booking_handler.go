@@ -74,6 +74,22 @@ func (h *BookingHandler) GetMyBookings(c *gin.Context) {
 	utils.JSONSuccess(c, http.StatusOK, "Bookings retrieved successfully", bookings)
 }
 
+// GetAllBookings godoc
+// @Summary List all platform bookings (Admin)
+// @Tags Bookings
+// @Produce json
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/admin/bookings [get]
+func (h *BookingHandler) GetAllBookings(c *gin.Context) {
+	bookings, err := h.bookingService.GetAllBookings()
+	if err != nil {
+		utils.JSONInternalServerError(c, "Failed to retrieve bookings", err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Bookings retrieved successfully", bookings)
+}
+
 // GetBookingByID godoc
 // @Summary Get booking details by ID
 // @Tags Bookings

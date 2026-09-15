@@ -51,6 +51,7 @@ func main() {
 	voucherSvc := service.NewVoucherService(voucherRepo)
 	locationSvc := service.NewLocationService(locationRepo)
 	bookingSvc := service.NewBookingService(bookingRepo, voucherRepo, workerRepo, serviceRepo)
+	mediaSvc := service.NewMediaService(cfg)
 
 	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -59,6 +60,7 @@ func main() {
 	bookingHandler := handler.NewBookingHandler(bookingSvc)
 	voucherHandler := handler.NewVoucherHandler(voucherSvc)
 	locationHandler := handler.NewLocationHandler(locationSvc)
+	mediaHandler := handler.NewMediaHandler(mediaSvc)
 	healthHandler := handler.NewHealthHandler(db)
 
 	// 6. Router Setup
@@ -79,13 +81,18 @@ func main() {
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 		}
 
-		// Public Service Catalog routes
+		// Service Catalog routes
 		serviceGroup := v1.Group("/services")
 		{
 			serviceGroup.GET("", serviceHandler.GetAllServices)
 			serviceGroup.GET("/:id", serviceHandler.GetServiceByID)
+			serviceGroup.POST("", serviceHandler.CreateService)
+			serviceGroup.PUT("/:id", serviceHandler.UpdateService)
+			serviceGroup.PATCH("/:id/status", serviceHandler.ToggleServiceStatus)
+			serviceGroup.DELETE("/:id", serviceHandler.DeleteService)
 		}
 
 		// Worker Discovery & Admin routes
@@ -94,7 +101,9 @@ func main() {
 			workerGroup.GET("", workerHandler.GetAllWorkers)
 			workerGroup.GET("/:id", workerHandler.GetWorkerByID)
 			workerGroup.POST("", workerHandler.CreateWorker)
+			workerGroup.POST("/register", workerHandler.RegisterWorker)
 			workerGroup.PUT("/:id", workerHandler.UpdateWorker)
+			workerGroup.PATCH("/:id/status", workerHandler.ToggleWorkerStatus)
 			workerGroup.DELETE("/:id", workerHandler.DeleteWorker)
 		}
 
@@ -103,6 +112,32 @@ func main() {
 		{
 			voucherGroup.GET("", voucherHandler.GetActiveVouchers)
 			voucherGroup.POST("/validate", voucherHandler.ValidateVoucher)
+		}
+
+		// Media & Profile Photo Uploads (Google Cloud Storage)
+		v1.POST("/upload/photo", mediaHandler.UploadPhoto)
+		v1.POST("/upload/avatar", mediaHandler.UploadPhoto)
+		v1.GET("/media/*filepath", mediaHandler.ServeMedia)
+
+		// Admin routes (Bookings, Customers)
+		adminGroup := v1.Group("/admin")
+		{
+			// Bookings
+			adminGroup.GET("/bookings", bookingHandler.GetAllBookings)
+			adminGroup.PATCH("/bookings/:id/status", bookingHandler.UpdateBookingStatus)
+
+			// Customers
+			adminGroup.GET("/customers", authHandler.GetAllCustomers)
+			adminGroup.GET("/customers/:id", authHandler.GetCustomerByID)
+			adminGroup.POST("/customers", authHandler.CreateCustomer)
+			adminGroup.PUT("/customers/:id", authHandler.UpdateCustomer)
+			adminGroup.PATCH("/customers/:id/status", authHandler.ToggleCustomerStatus)
+			adminGroup.DELETE("/customers/:id", authHandler.DeleteCustomer)
+
+			// Review Moderation (Approve / Reject / Delete)
+			adminGroup.GET("/reviews", workerHandler.GetAdminReviews)
+			adminGroup.PATCH("/reviews/:id/status", workerHandler.UpdateReviewStatus)
+			adminGroup.DELETE("/reviews/:id", workerHandler.DeleteReview)
 		}
 
 		// Protected User routes

@@ -50,7 +50,7 @@ func (s *voucherService) ValidateVoucher(req *dto.ValidateVoucherRequest) (*dto.
 			Valid:   false,
 			Code:    voucher.Code,
 			Title:   voucher.Title,
-			Message: fmt.Sprintf("Minimum spend of %.2f ฿ required to use this voucher", voucher.MinSpend),
+			Message: fmt.Sprintf("Minimum spend of Rs. %.2f required to use this voucher", voucher.MinSpend),
 		}, nil
 	}
 

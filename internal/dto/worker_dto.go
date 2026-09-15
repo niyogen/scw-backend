@@ -8,10 +8,31 @@ import (
 
 type WorkerReviewResponse struct {
 	ID         uuid.UUID `json:"id"`
+	WorkerID   uuid.UUID `json:"worker_id,omitempty"`
+	WorkerName string    `json:"worker_name,omitempty"`
 	AuthorName string    `json:"author"`
 	Rating     float64   `json:"rating"`
 	Comment    string    `json:"comment"`
+	IsApproved bool      `json:"is_approved"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+type AdminReviewResponse struct {
+	ID         uuid.UUID  `json:"id"`
+	WorkerID   uuid.UUID  `json:"worker_id"`
+	WorkerName string     `json:"worker_name"`
+	WorkerCode string     `json:"worker_code"`
+	UserID     *uuid.UUID `json:"user_id,omitempty"`
+	UserEmail  string     `json:"user_email,omitempty"`
+	AuthorName string     `json:"author"`
+	Rating     float64    `json:"rating"`
+	Comment    string     `json:"comment"`
+	IsApproved bool       `json:"is_approved"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+type UpdateReviewStatusRequest struct {
+	IsApproved bool `json:"is_approved"`
 }
 
 type WorkerResponse struct {
@@ -32,14 +53,16 @@ type WorkerResponse struct {
 	HourlyRate       string                 `json:"hourly_rate"`
 	RateValue        float64                `json:"rate_value"`
 	IsVerified       bool                   `json:"is_verified"`
+	IsActive         bool                   `json:"is_active"`
 	IsAvailableToday bool                   `json:"is_available_today"`
 	Badges           []string               `json:"badges"`
 	Reviews          []WorkerReviewResponse `json:"reviews,omitempty"`
 }
 
 type CreateWorkerReviewRequest struct {
-	Rating  float64 `json:"rating" binding:"required,min=1,max=5"`
-	Comment string  `json:"comment" binding:"required,min=3"`
+	BookingID *uuid.UUID `json:"booking_id"`
+	Rating    float64    `json:"rating" binding:"required,min=1,max=5"`
+	Comment   string     `json:"comment" binding:"required,min=3"`
 }
 
 type CreateWorkerRequest struct {
@@ -56,6 +79,7 @@ type CreateWorkerRequest struct {
 	HourlyRate       string   `json:"hourly_rate"`
 	RateValue        float64  `json:"rate_value"`
 	IsVerified       *bool    `json:"is_verified"`
+	IsActive         *bool    `json:"is_active"`
 	IsAvailableToday *bool    `json:"is_available_today"`
 	Badges           []string `json:"badges"`
 }
@@ -74,6 +98,11 @@ type UpdateWorkerRequest struct {
 	HourlyRate       *string   `json:"hourly_rate"`
 	RateValue        *float64  `json:"rate_value"`
 	IsVerified       *bool     `json:"is_verified"`
+	IsActive         *bool     `json:"is_active"`
 	IsAvailableToday *bool     `json:"is_available_today"`
 	Badges           *[]string `json:"badges"`
+}
+
+type ToggleWorkerStatusRequest struct {
+	IsActive bool `json:"is_active"`
 }

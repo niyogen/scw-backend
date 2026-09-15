@@ -72,10 +72,10 @@ docker compose down
 - **Customer Demo Account:**
   - **Email:** `user@example.com`
   - **Password:** `Password123!`
-  - **Phone:** `+66 81 234 5678`
+  - **Phone:** `+94 77 123 4567`
 - **Pre-seeded Services:** Plumbing, Electricity, Building Work, Cleaning, Care Taking, Carpenter, Cook & Chef, Other Services
-- **Pre-seeded Workers:** 7 verified professional profiles with ratings, reviews, and badges
-- **Pre-seeded Promo Codes:** `WELCOME20` (20% off up to 500 ฿), `SAVE100` (Flat 100 ฿ off)
+- **Pre-seeded Workers:** 7 verified professional profiles with ratings, reviews, and badges in Sri Lanka
+- **Pre-seeded Promo Codes:** `WELCOME20` (20% off up to Rs. 1,500), `SAVE500` (Flat Rs. 500 off)
 
 ---
 

@@ -16,6 +16,9 @@ type CreateBookingRequest struct {
 	VoucherCode       string                 `json:"voucher_code"`
 	PaymentMethod     string                 `json:"payment_method"` // promptpay, credit_card, cash
 	Notes             string                 `json:"notes"`
+	JobTitle          string                 `json:"job_title"`
+	JobDescription    string                 `json:"job_description"`
+	JobPhotos         []string               `json:"job_photos"`
 	ScheduledAtString string                 `json:"scheduled_at"` // ISO string
 }
 
@@ -38,6 +41,9 @@ type BookingResponse struct {
 	PaymentStatus    string                 `json:"payment_status"`
 	Status           string                 `json:"status"`
 	Notes            string                 `json:"notes,omitempty"`
+	JobTitle         string                 `json:"job_title,omitempty"`
+	JobDescription   string                 `json:"job_description,omitempty"`
+	JobPhotos        []string               `json:"job_photos,omitempty"`
 	ScheduledAt      *time.Time             `json:"scheduled_at,omitempty"`
 	CreatedAt        time.Time              `json:"created_at"`
 }

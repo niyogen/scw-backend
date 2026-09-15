@@ -17,6 +17,7 @@ import (
 type BookingService interface {
 	CreateBooking(userID uuid.UUID, req *dto.CreateBookingRequest) (*dto.BookingResponse, error)
 	GetUserBookings(userID uuid.UUID) ([]dto.BookingResponse, error)
+	GetAllBookings() ([]dto.BookingResponse, error)
 	GetBookingByID(id uuid.UUID, userID uuid.UUID, role string) (*dto.BookingResponse, error)
 	UpdateBookingStatus(id uuid.UUID, req *dto.UpdateBookingStatusRequest) error
 	CancelBooking(id uuid.UUID, userID uuid.UUID) error
@@ -92,6 +93,9 @@ func (s *bookingService) CreateBooking(userID uuid.UUID, req *dto.CreateBookingR
 		PaymentStatus:     "pending",
 		Status:            "confirmed",
 		Notes:             req.Notes,
+		JobTitle:          req.JobTitle,
+		JobDescription:    req.JobDescription,
+		JobPhotos:         req.JobPhotos,
 		ScheduledAt:       scheduledAt,
 	}
 
@@ -111,6 +115,19 @@ func (s *bookingService) CreateBooking(userID uuid.UUID, req *dto.CreateBookingR
 
 func (s *bookingService) GetUserBookings(userID uuid.UUID) ([]dto.BookingResponse, error) {
 	bookings, err := s.bookingRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]dto.BookingResponse, 0, len(bookings))
+	for _, b := range bookings {
+		res = append(res, mapBookingToDTO(&b))
+	}
+	return res, nil
+}
+
+func (s *bookingService) GetAllBookings() ([]dto.BookingResponse, error) {
+	bookings, err := s.bookingRepo.FindAll()
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +211,9 @@ func mapBookingToDTO(b *models.Booking) dto.BookingResponse {
 		PaymentStatus:    b.PaymentStatus,
 		Status:           b.Status,
 		Notes:            b.Notes,
+		JobTitle:         b.JobTitle,
+		JobDescription:   b.JobDescription,
+		JobPhotos:        b.JobPhotos,
 		ScheduledAt:      b.ScheduledAt,
 		CreatedAt:        b.CreatedAt,
 	}
