@@ -68,6 +68,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	utils.JSONSuccess(c, http.StatusOK, "Login successful", res)
 }
 
+// GoogleLogin godoc
+// @Summary Google / Gmail OAuth Login
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.GoogleLoginRequest true "Google Login Payload"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/auth/google [post]
+func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	var req dto.GoogleLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.JSONBadRequest(c, "Invalid Google login credentials format", err.Error())
+		return
+	}
+
+	res, err := h.authService.GoogleLogin(&req)
+	if err != nil {
+		utils.JSONUnauthorized(c, err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Google sign-in successful", res)
+}
+
 // ForgotPassword handles customer password recovery
 // POST /api/v1/auth/forgot-password
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {

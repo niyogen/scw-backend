@@ -21,6 +21,14 @@ type Config struct {
 	JWTExpiresIn  int // hours
 	GCSBucketName string
 	AppBaseURL    string
+	SMTPHost      string
+	SMTPPort      string
+	SMTPUser      string
+	SMTPPassword  string
+	SMTPFromName  string
+	SMTPFromEmail string
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 func LoadConfig() (*Config, error) {
@@ -38,13 +46,21 @@ func LoadConfig() (*Config, error) {
 		DBHost:        getEnv("DB_HOST", "localhost"),
 		DBPort:        getEnv("DB_PORT", "5432"),
 		DBUser:        getEnv("DB_USER", "postgres"),
-		DBPassword:    getEnv("DB_PASSWORD", "postgres"),
+		DBPassword:    getEnv("DB_PASSWORD", ""),
 		DBName:        getEnv("DB_NAME", "delivery_db"),
 		DBSSLMode:     getEnv("DB_SSLMODE", "disable"),
-		JWTSecret:     getEnv("JWT_SECRET", "super-secret-jwt-key-change-in-production-12345"),
+		JWTSecret:     getEnv("JWT_SECRET", ""),
 		JWTExpiresIn:  jwtExp,
 		GCSBucketName: getEnv("GCS_BUCKET_NAME", "carfenter-media-1003415657356"),
 		AppBaseURL:    getEnv("APP_BASE_URL", "https://carfenter-backend-1003415657356.us-central1.run.app"),
+		SMTPHost:      getEnv("SMTP_HOST", "smtp.gmail.com"),
+		SMTPPort:      getEnv("SMTP_PORT", "587"),
+		SMTPUser:      getEnv("SMTP_USER", "itranga@gmail.com"),
+		SMTPPassword:  getEnv("SMTP_PASSWORD", getEnv("SMTP_PASS", "")),
+		SMTPFromName:  getEnv("SMTP_FROM_NAME", "Sewa Home Services"),
+		SMTPFromEmail: getEnv("SMTP_FROM_EMAIL", "itranga@gmail.com"),
+		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 	}
 
 	return cfg, nil

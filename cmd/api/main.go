@@ -45,18 +45,19 @@ func main() {
 	locationRepo := repository.NewLocationRepository(db)
 
 	// 4. Initialize Services
-	authSvc := service.NewAuthService(userRepo, cfg)
+	emailSvc := service.NewEmailService(cfg)
+	authSvc := service.NewAuthService(userRepo, workerRepo, emailSvc, cfg)
 	serviceCatalogSvc := service.NewServiceCatalogService(serviceRepo)
 	workerSvc := service.NewWorkerService(workerRepo, userRepo)
 	voucherSvc := service.NewVoucherService(voucherRepo)
 	locationSvc := service.NewLocationService(locationRepo)
-	bookingSvc := service.NewBookingService(bookingRepo, voucherRepo, workerRepo, serviceRepo)
+	bookingSvc := service.NewBookingService(bookingRepo, voucherRepo, workerRepo, serviceRepo, emailSvc)
 	mediaSvc := service.NewMediaService(cfg)
 
 	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authSvc)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogSvc)
-	workerHandler := handler.NewWorkerHandler(workerSvc)
+	workerHandler := handler.NewWorkerHandler(workerSvc, bookingSvc)
 	bookingHandler := handler.NewBookingHandler(bookingSvc)
 	voucherHandler := handler.NewVoucherHandler(voucherSvc)
 	locationHandler := handler.NewLocationHandler(locationSvc)
@@ -81,6 +82,7 @@ func main() {
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/google", authHandler.GoogleLogin)
 			authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 		}
 
@@ -99,13 +101,21 @@ func main() {
 		workerGroup := v1.Group("/workers")
 		{
 			workerGroup.GET("", workerHandler.GetAllWorkers)
+			workerGroup.GET("/nearby", workerHandler.GetNearbyWorkers)
 			workerGroup.GET("/:id", workerHandler.GetWorkerByID)
+			workerGroup.PATCH("/:id/location-status", workerHandler.UpdateLocationStatus)
+			workerGroup.GET("/:id/jobs/available", workerHandler.GetAvailableJobs)
+			workerGroup.GET("/:id/bookings", workerHandler.GetWorkerBookings)
 			workerGroup.POST("", workerHandler.CreateWorker)
 			workerGroup.POST("/register", workerHandler.RegisterWorker)
 			workerGroup.PUT("/:id", workerHandler.UpdateWorker)
 			workerGroup.PATCH("/:id/status", workerHandler.ToggleWorkerStatus)
 			workerGroup.DELETE("/:id", workerHandler.DeleteWorker)
 		}
+
+		// Job Dispatch response endpoint (accept / reject)
+		v1.POST("/bookings/:id/respond", bookingHandler.RespondToJob)
+		v1.PATCH("/bookings/:id/status", bookingHandler.UpdateBookingStatus)
 
 		// Public Voucher routes
 		voucherGroup := v1.Group("/vouchers")
@@ -168,7 +178,6 @@ func main() {
 				bookingGroup.GET("", bookingHandler.GetMyBookings)
 				bookingGroup.GET("/:id", bookingHandler.GetBookingByID)
 				bookingGroup.POST("/:id/cancel", bookingHandler.CancelBooking)
-				bookingGroup.PATCH("/:id/status", bookingHandler.UpdateBookingStatus)
 			}
 		}
 	}

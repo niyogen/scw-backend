@@ -37,6 +37,7 @@ type UpdateReviewStatusRequest struct {
 
 type WorkerResponse struct {
 	ID               uuid.UUID              `json:"id"`
+	UserID           *uuid.UUID             `json:"user_id,omitempty"`
 	WorkerCode       string                 `json:"worker_code"`
 	Name             string                 `json:"name"`
 	AvatarURL        string                 `json:"avatar_url"`
@@ -52,11 +53,25 @@ type WorkerResponse struct {
 	CompletedJobs    int                    `json:"completed_jobs"`
 	HourlyRate       string                 `json:"hourly_rate"`
 	RateValue        float64                `json:"rate_value"`
+	Latitude         float64                `json:"latitude"`
+	Longitude        float64                `json:"longitude"`
+	OperatingAddress string                 `json:"operating_address"`
+	IsOpenForWork    bool                   `json:"is_open_for_work"`
+	RadiusKm         float64                `json:"radius_km"`
+	DistanceKm       float64                `json:"distance_km,omitempty"`
 	IsVerified       bool                   `json:"is_verified"`
 	IsActive         bool                   `json:"is_active"`
 	IsAvailableToday bool                   `json:"is_available_today"`
 	Badges           []string               `json:"badges"`
 	Reviews          []WorkerReviewResponse `json:"reviews,omitempty"`
+}
+
+type UpdateWorkerLocationStatusRequest struct {
+	Latitude         float64  `json:"latitude"`
+	Longitude        float64  `json:"longitude"`
+	OperatingAddress string   `json:"operating_address"`
+	IsOpenForWork    *bool    `json:"is_open_for_work"`
+	RadiusKm         *float64 `json:"radius_km"`
 }
 
 type CreateWorkerReviewRequest struct {

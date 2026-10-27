@@ -8,15 +8,19 @@ import (
 	"delivery-backend/internal/dto"
 	"delivery-backend/internal/models"
 	"delivery-backend/internal/repository"
+	"delivery-backend/internal/utils"
 
 	"github.com/google/uuid"
 )
 
 type WorkerService interface {
 	GetAllWorkers(serviceType string, availableOnly bool, all bool) ([]dto.WorkerResponse, error)
+	GetNearbyWorkers(lat, lng float64, serviceType string, radiusKm float64) ([]dto.WorkerResponse, error)
 	GetWorkerByIDOrCode(idOrCode string) (*dto.WorkerResponse, error)
+	GetWorkerByUserID(userID uuid.UUID) (*dto.WorkerResponse, error)
 	CreateWorker(req *dto.CreateWorkerRequest) (*dto.WorkerResponse, error)
 	UpdateWorker(idOrCode string, req *dto.UpdateWorkerRequest) (*dto.WorkerResponse, error)
+	UpdateLocationStatus(workerID uuid.UUID, req *dto.UpdateWorkerLocationStatusRequest) (*dto.WorkerResponse, error)
 	ToggleWorkerActive(idOrCode string, isActive bool) error
 	DeleteWorker(idOrCode string) error
 	AddWorkerReview(workerID uuid.UUID, userID uuid.UUID, req *dto.CreateWorkerReviewRequest) (*dto.WorkerReviewResponse, error)
@@ -50,13 +54,108 @@ func (s *workerService) GetAllWorkers(serviceType string, availableOnly bool, al
 	return res, nil
 }
 
-func (s *workerService) GetWorkerByIDOrCode(idOrCode string) (*dto.WorkerResponse, error) {
-	worker, err := s.workerRepo.FindByIDOrCode(idOrCode)
+func (s *workerService) GetNearbyWorkers(lat, lng float64, serviceType string, radiusKm float64) ([]dto.WorkerResponse, error) {
+	if radiusKm <= 0 {
+		radiusKm = 10.0 // default 10 km
+	}
+
+	// Fetch active workers who are open for work
+	workers, err := s.workerRepo.FindAll(serviceType, false, false)
 	if err != nil {
-		return nil, errors.New("worker not found")
+		return nil, err
+	}
+
+	res := make([]dto.WorkerResponse, 0)
+	for _, w := range workers {
+		// Worker must be open for work / available today
+		if !w.IsOpenForWork && !w.IsAvailableToday {
+			continue
+		}
+
+		// Calculate distance from requested location
+		dist := 0.0
+		if lat != 0 && lng != 0 && w.Latitude != 0 && w.Longitude != 0 {
+			dist = utils.HaversineDistance(lat, lng, w.Latitude, w.Longitude)
+			if dist > radiusKm {
+				continue
+			}
+		}
+
+		dtoW := mapWorkerToDTO(&w)
+		dtoW.DistanceKm = dist
+		res = append(res, dtoW)
+	}
+
+	return res, nil
+}
+
+func (s *workerService) GetWorkerByUserID(userID uuid.UUID) (*dto.WorkerResponse, error) {
+	worker, err := s.workerRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, errors.New("worker profile not found for user")
 	}
 	dtoRes := mapWorkerToDTO(worker)
 	return &dtoRes, nil
+}
+
+func (s *workerService) UpdateLocationStatus(workerID uuid.UUID, req *dto.UpdateWorkerLocationStatusRequest) (*dto.WorkerResponse, error) {
+	if err := s.workerRepo.UpdateLocationStatus(workerID, req.Latitude, req.Longitude, req.OperatingAddress, req.IsOpenForWork, req.RadiusKm); err != nil {
+		return nil, err
+	}
+
+	worker, err := s.workerRepo.FindByIDOrCode(workerID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	dtoRes := mapWorkerToDTO(worker)
+	return &dtoRes, nil
+}
+
+func (s *workerService) GetWorkerByIDOrCode(idOrCode string) (*dto.WorkerResponse, error) {
+	worker, err := s.workerRepo.FindByIDOrCode(idOrCode)
+	if err == nil && worker != nil {
+		dtoRes := mapWorkerToDTO(worker)
+		return &dtoRes, nil
+	}
+
+	// Check if idOrCode corresponds to a User ID
+	if parsedUUID, err := uuid.Parse(idOrCode); err == nil && s.userRepo != nil {
+		if user, err := s.userRepo.FindByID(parsedUUID); err == nil && user != nil {
+			// Auto-provision worker profile for this user
+			newWorker := models.Worker{
+				UserID:           &user.ID,
+				WorkerCode:       fmt.Sprintf("wrk_%s", user.ID.String()[:8]),
+				Name:             user.Name,
+				Email:            user.Email,
+				Phone:            user.Phone,
+				AvatarURL:        user.AvatarURL,
+				Age:              30,
+				ExperienceYears:  5,
+				Rating:           5.0,
+				ReviewsCount:     0,
+				ServiceTypes:     []string{"all", "other", "plumbing", "electricity", "cleaning", "building_work", "carpenter", "cook", "care_taking"},
+				Specializations:  []string{"General Specialist", "All-Round Technician"},
+				HourlyRate:       "Rs. 1,500 / hr",
+				RateValue:        1500.0,
+				Latitude:         6.9271,
+				Longitude:        79.8612,
+				OperatingAddress: "Colombo, Sri Lanka",
+				IsOpenForWork:    true,
+				RadiusKm:         20.0,
+				IsVerified:       true,
+				IsActive:         true,
+				IsAvailableToday: true,
+				Badges:           []string{"Verified Pro", "Active Partner"},
+			}
+			if err := s.workerRepo.Create(&newWorker); err == nil {
+				dtoRes := mapWorkerToDTO(&newWorker)
+				return &dtoRes, nil
+			}
+		}
+	}
+
+	return nil, errors.New("worker not found")
 }
 
 func (s *workerService) CreateWorker(req *dto.CreateWorkerRequest) (*dto.WorkerResponse, error) {
@@ -341,6 +440,7 @@ func mapWorkerToDTO(w *models.Worker) dto.WorkerResponse {
 
 	return dto.WorkerResponse{
 		ID:               w.ID,
+		UserID:           w.UserID,
 		WorkerCode:       w.WorkerCode,
 		Name:             w.Name,
 		AvatarURL:        w.AvatarURL,
@@ -356,6 +456,11 @@ func mapWorkerToDTO(w *models.Worker) dto.WorkerResponse {
 		CompletedJobs:    w.CompletedJobs,
 		HourlyRate:       w.HourlyRate,
 		RateValue:        w.RateValue,
+		Latitude:         w.Latitude,
+		Longitude:        w.Longitude,
+		OperatingAddress: w.OperatingAddress,
+		IsOpenForWork:    w.IsOpenForWork,
+		RadiusKm:         w.RadiusKm,
 		IsVerified:       w.IsVerified,
 		IsActive:         w.IsActive,
 		IsAvailableToday: w.IsAvailableToday,

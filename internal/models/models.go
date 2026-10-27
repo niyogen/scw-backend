@@ -59,6 +59,8 @@ type ServiceOption struct {
 // Worker represents skilled service technicians & professionals
 type Worker struct {
 	Base
+	UserID           *uuid.UUID     `gorm:"type:uuid;index" json:"user_id,omitempty"`
+	User             *User          `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	WorkerCode       string         `gorm:"size:100;uniqueIndex;not null" json:"worker_code"` // e.g. wrk_1
 	Name             string         `gorm:"size:255;not null" json:"name"`
 	AvatarURL        string         `gorm:"size:500;not null" json:"avatar_url"`
@@ -74,6 +76,11 @@ type Worker struct {
 	CompletedJobs    int            `gorm:"default:0" json:"completed_jobs"`
 	HourlyRate       string         `gorm:"size:100;not null" json:"hourly_rate"`
 	RateValue        float64        `gorm:"type:decimal(10,2);default:500.00" json:"rate_value"`
+	Latitude         float64        `gorm:"type:decimal(10,8);default:6.9271" json:"latitude"`
+	Longitude        float64        `gorm:"type:decimal(11,8);default:79.8612" json:"longitude"`
+	OperatingAddress string         `gorm:"size:255;default:'Colombo, Sri Lanka'" json:"operating_address"`
+	IsOpenForWork    bool           `gorm:"default:true" json:"is_open_for_work"`
+	RadiusKm         float64        `gorm:"type:decimal(6,2);default:10.00" json:"radius_km"`
 	IsVerified       bool           `json:"is_verified"`
 	IsActive         bool           `json:"is_active"`
 	IsAvailableToday bool           `gorm:"default:true" json:"is_available_today"`
@@ -107,6 +114,8 @@ type Booking struct {
 	Service           *ServiceItem `gorm:"foreignKey:ServiceID" json:"service,omitempty"`
 	LocationTitle     string       `gorm:"size:255;not null" json:"location_title"`
 	LocationSubtitle  string       `gorm:"type:text;not null" json:"location_subtitle"`
+	Latitude          float64      `gorm:"type:decimal(10,8);default:6.9271" json:"latitude"`
+	Longitude         float64      `gorm:"type:decimal(11,8);default:79.8612" json:"longitude"`
 	SelectedItemsJSON string       `gorm:"type:jsonb" json:"selected_items"` // map of item names to count/prices
 	TotalCost         float64      `gorm:"type:decimal(10,2);not null" json:"total_cost"`
 	DiscountAmount    float64      `gorm:"type:decimal(10,2);default:0" json:"discount_amount"`
@@ -114,11 +123,12 @@ type Booking struct {
 	VoucherCode       string       `gorm:"size:50" json:"voucher_code,omitempty"`
 	PaymentMethod     string       `gorm:"size:50;default:'promptpay'" json:"payment_method"` // promptpay, credit_card, cash
 	PaymentStatus     string       `gorm:"size:50;default:'pending'" json:"payment_status"`   // pending, paid, refunded, failed
-	Status            string       `gorm:"size:50;default:'pending'" json:"status"`           // pending, confirmed, in_progress, completed, cancelled
+	Status            string       `gorm:"size:50;default:'pending'" json:"status"`           // pending, accepted, confirmed, in_progress, completed, cancelled
 	Notes             string       `gorm:"type:text" json:"notes,omitempty"`
 	JobTitle          string       `gorm:"size:255" json:"job_title,omitempty"`
 	JobDescription    string       `gorm:"type:text" json:"job_description,omitempty"`
 	JobPhotos         []string     `gorm:"type:jsonb;serializer:json" json:"job_photos,omitempty"`
+	RejectedWorkers   []string     `gorm:"type:jsonb;serializer:json" json:"rejected_workers,omitempty"`
 	ScheduledAt       *time.Time   `json:"scheduled_at,omitempty"`
 }
 

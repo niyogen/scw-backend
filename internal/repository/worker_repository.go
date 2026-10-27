@@ -10,8 +10,11 @@ import (
 type WorkerRepository interface {
 	FindAll(serviceType string, availableOnly bool, all bool) ([]models.Worker, error)
 	FindByIDOrCode(idOrCode string) (*models.Worker, error)
+	FindByUserID(userID uuid.UUID) (*models.Worker, error)
+	FindByEmail(email string) (*models.Worker, error)
 	Create(worker *models.Worker) error
 	Update(worker *models.Worker) error
+	UpdateLocationStatus(id uuid.UUID, lat, lng float64, address string, isOpen *bool, radiusKm *float64) error
 	ToggleActive(id uuid.UUID, isActive bool) error
 	Delete(id uuid.UUID) error
 	AddReview(review *models.WorkerReview) error
@@ -21,6 +24,7 @@ type WorkerRepository interface {
 	UpdateReviewStatus(id uuid.UUID, isApproved bool) error
 	DeleteReview(id uuid.UUID) error
 	UpdateWorkerRating(workerID uuid.UUID) error
+	IncrementCompletedJobs(workerID uuid.UUID) error
 }
 
 type workerRepository struct {
@@ -59,12 +63,56 @@ func (r *workerRepository) FindByIDOrCode(idOrCode string) (*models.Worker, erro
 		if err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "id = ?", parsedUUID).Error; err == nil {
 			return &worker, nil
 		}
+		if err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "user_id = ?", parsedUUID).Error; err == nil {
+			return &worker, nil
+		}
 	}
 	// Fallback to worker_code
-	if err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "worker_code = ?", idOrCode).Error; err != nil {
+	if err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "worker_code = ?", idOrCode).Error; err == nil {
+		return &worker, nil
+	}
+	// Fallback to email
+	if err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "email ILIKE ?", idOrCode).Error; err == nil {
+		return &worker, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (r *workerRepository) FindByUserID(userID uuid.UUID) (*models.Worker, error) {
+	var worker models.Worker
+	err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "user_id = ?", userID).Error
+	if err != nil {
 		return nil, err
 	}
 	return &worker, nil
+}
+
+func (r *workerRepository) FindByEmail(email string) (*models.Worker, error) {
+	var worker models.Worker
+	err := r.db.Preload("Reviews", "is_approved = ?", true).First(&worker, "email ILIKE ?", email).Error
+	if err != nil {
+		return nil, err
+	}
+	return &worker, nil
+}
+
+func (r *workerRepository) UpdateLocationStatus(id uuid.UUID, lat, lng float64, address string, isOpen *bool, radiusKm *float64) error {
+	updates := map[string]interface{}{}
+	if lat != 0 && lng != 0 {
+		updates["latitude"] = lat
+		updates["longitude"] = lng
+	}
+	if address != "" {
+		updates["operating_address"] = address
+	}
+	if isOpen != nil {
+		updates["is_open_for_work"] = *isOpen
+		updates["is_available_today"] = *isOpen
+	}
+	if radiusKm != nil && *radiusKm > 0 {
+		updates["radius_km"] = *radiusKm
+	}
+	return r.db.Model(&models.Worker{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (r *workerRepository) Create(worker *models.Worker) error {
@@ -144,4 +192,8 @@ func (r *workerRepository) UpdateWorkerRating(workerID uuid.UUID) error {
 		"rating":        rating,
 		"reviews_count": result.Count,
 	}).Error
+}
+
+func (r *workerRepository) IncrementCompletedJobs(workerID uuid.UUID) error {
+	return r.db.Model(&models.Worker{}).Where("id = ?", workerID).UpdateColumn("completed_jobs", gorm.Expr("completed_jobs + 1")).Error
 }

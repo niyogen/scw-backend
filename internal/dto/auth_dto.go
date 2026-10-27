@@ -18,25 +18,28 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	PhoneOrEmail string `json:"phone_or_email" binding:"required"`
 	Password     string `json:"password" binding:"required"`
+	Role         string `json:"role"` // "customer" or "worker"
 }
 
 type UserResponse struct {
-	ID             uuid.UUID `json:"id"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	Phone          string    `json:"phone"`
-	AvatarURL      string    `json:"avatar_url"`
-	Role           string    `json:"role"`
-	IsActive       bool      `json:"is_active"`
-	BookingsCount  int       `json:"bookings_count"`
-	AddressesCount int       `json:"addresses_count"`
-	TotalSpent     float64   `json:"total_spent"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID             uuid.UUID       `json:"id"`
+	Name           string          `json:"name"`
+	Email          string          `json:"email"`
+	Phone          string          `json:"phone"`
+	AvatarURL      string          `json:"avatar_url"`
+	Role           string          `json:"role"`
+	IsActive       bool            `json:"is_active"`
+	WorkerProfile  *WorkerResponse `json:"worker_profile,omitempty"`
+	BookingsCount  int             `json:"bookings_count"`
+	AddressesCount int             `json:"addresses_count"`
+	TotalSpent     float64         `json:"total_spent"`
+	CreatedAt      time.Time       `json:"created_at"`
 }
 
 type AuthResponse struct {
-	Token string       `json:"token"`
-	User  UserResponse `json:"user"`
+	Token         string          `json:"token"`
+	User          UserResponse    `json:"user"`
+	WorkerProfile *WorkerResponse `json:"worker_profile,omitempty"`
 }
 
 type UpdateProfileRequest struct {
@@ -54,6 +57,15 @@ type ForgotPasswordRequest struct {
 	PhoneOrEmail    string `json:"phone_or_email" binding:"required"`
 	NewPassword     string `json:"new_password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}
+
+type GoogleLoginRequest struct {
+	IDToken     string `json:"id_token"`
+	AccessToken string `json:"access_token"`
+	Email       string `json:"email" binding:"required"`
+	Name        string `json:"name"`
+	AvatarURL   string `json:"avatar_url"`
+	Role        string `json:"role"` // "customer" or "worker"
 }
 
 type CreateCustomerRequest struct {

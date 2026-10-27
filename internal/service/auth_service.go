@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"delivery-backend/internal/config"
@@ -16,6 +17,7 @@ import (
 type AuthService interface {
 	Register(req *dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(req *dto.LoginRequest) (*dto.AuthResponse, error)
+	GoogleLogin(req *dto.GoogleLoginRequest) (*dto.AuthResponse, error)
 	ForgotPassword(req *dto.ForgotPasswordRequest) error
 	GetProfile(userID uuid.UUID) (*dto.UserResponse, error)
 	UpdateProfile(userID uuid.UUID, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
@@ -29,14 +31,18 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo repository.UserRepository
-	cfg      *config.Config
+	userRepo   repository.UserRepository
+	workerRepo repository.WorkerRepository
+	emailSvc   EmailService
+	cfg        *config.Config
 }
 
-func NewAuthService(userRepo repository.UserRepository, cfg *config.Config) AuthService {
+func NewAuthService(userRepo repository.UserRepository, workerRepo repository.WorkerRepository, emailSvc EmailService, cfg *config.Config) AuthService {
 	return &authService{
-		userRepo: userRepo,
-		cfg:      cfg,
+		userRepo:   userRepo,
+		workerRepo: workerRepo,
+		emailSvc:   emailSvc,
+		cfg:        cfg,
 	}
 }
 
@@ -106,22 +112,204 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 		return nil, errors.New("user account is deactivated")
 	}
 
+	// Any registered user (customer, worker, admin) is permitted to access the platform.
+
 	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, s.cfg.JWTSecret, s.cfg.JWTExpiresIn)
 	if err != nil {
 		return nil, err
 	}
 
+	var workerProfile *dto.WorkerResponse
+	if req.Role == "worker" || user.Role == "worker" || user.Role == "admin" {
+		if s.workerRepo != nil {
+			worker, err := s.workerRepo.FindByUserID(user.ID)
+			if err != nil || worker == nil {
+				worker, err = s.workerRepo.FindByEmail(user.Email)
+			}
+			if worker == nil && req.Role == "worker" {
+				// Auto-provision worker profile for this registered user
+				newWorker := models.Worker{
+					UserID:           &user.ID,
+					WorkerCode:       fmt.Sprintf("wrk_%s", user.ID.String()[:8]),
+					Name:             user.Name,
+					Email:            user.Email,
+					Phone:            user.Phone,
+					AvatarURL:        user.AvatarURL,
+					Age:              30,
+					ExperienceYears:  5,
+					Rating:           5.0,
+					ReviewsCount:     0,
+					ServiceTypes:     []string{"all", "other", "plumbing", "electricity", "cleaning", "building_work", "carpenter", "cook", "care_taking"},
+					Specializations:  []string{"General Specialist", "All-Round Technician"},
+					HourlyRate:       "Rs. 1,500 / hr",
+					RateValue:        1500.0,
+					Latitude:         6.9271,
+					Longitude:        79.8612,
+					OperatingAddress: "Colombo, Sri Lanka",
+					IsOpenForWork:    true,
+					RadiusKm:         20.0,
+					IsVerified:       true,
+					IsActive:         true,
+					IsAvailableToday: true,
+					Badges:           []string{"Verified Pro", "Active Partner"},
+				}
+				if err := s.workerRepo.Create(&newWorker); err == nil {
+					worker = &newWorker
+				}
+			}
+			if worker != nil {
+				w := mapWorkerToDTO(worker)
+				workerProfile = &w
+			}
+		}
+	}
+
+	userResp := dto.UserResponse{
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Phone:         user.Phone,
+		AvatarURL:     user.AvatarURL,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		WorkerProfile: workerProfile,
+		CreatedAt:     user.CreatedAt,
+	}
+
 	return &dto.AuthResponse{
-		Token: token,
-		User: dto.UserResponse{
-			ID:        user.ID,
-			Name:      user.Name,
-			Email:     user.Email,
-			Phone:     user.Phone,
-			AvatarURL: user.AvatarURL,
-			Role:      user.Role,
-			CreatedAt: user.CreatedAt,
-		},
+		Token:         token,
+		User:          userResp,
+		WorkerProfile: workerProfile,
+	}, nil
+}
+
+func (s *authService) GoogleLogin(req *dto.GoogleLoginRequest) (*dto.AuthResponse, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		return nil, errors.New("email is required for Google login")
+	}
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		parts := strings.Split(email, "@")
+		name = parts[0]
+	}
+
+	avatarURL := req.AvatarURL
+	if avatarURL == "" {
+		avatarURL = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80"
+	}
+
+	targetRole := "customer"
+	if req.Role == "worker" {
+		targetRole = "worker"
+	}
+
+	// 1. Find or create user by email
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil || user == nil {
+		randPass := uuid.New().String()
+		hashedPassword, err := utils.HashPassword(randPass)
+		if err != nil {
+			return nil, errors.New("failed to secure account")
+		}
+
+		placeholderPhone := "+94 77 " + strings.ReplaceAll(uuid.New().String()[:7], "-", "9")
+
+		newUser := models.User{
+			Name:         name,
+			Email:        email,
+			Phone:        placeholderPhone,
+			PasswordHash: hashedPassword,
+			AvatarURL:    avatarURL,
+			Role:         targetRole,
+			IsActive:     true,
+		}
+
+		if err := s.userRepo.Create(&newUser); err != nil {
+			return nil, fmt.Errorf("failed to create user: %w", err)
+		}
+		user = &newUser
+	} else {
+		if !user.IsActive {
+			return nil, errors.New("user account is deactivated")
+		}
+
+		// Update name/avatar if empty or placeholder
+		updates := make(map[string]interface{})
+		if user.AvatarURL == "" && avatarURL != "" {
+			updates["avatar_url"] = avatarURL
+			user.AvatarURL = avatarURL
+		}
+		if (user.Name == "" || strings.Contains(user.Name, "@")) && name != "" {
+			updates["name"] = name
+			user.Name = name
+		}
+		if len(updates) > 0 {
+			_ = s.userRepo.Update(user)
+		}
+	}
+
+	// 2. Generate JWT
+	token, err := utils.GenerateJWT(user.ID, user.Email, user.Role, s.cfg.JWTSecret, s.cfg.JWTExpiresIn)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Resolve Worker Profile if needed
+	var workerProfile *dto.WorkerResponse
+	if targetRole == "worker" || user.Role == "worker" {
+		worker, _ := s.workerRepo.FindByUserID(user.ID)
+		if worker == nil {
+			worker, _ = s.workerRepo.FindByEmail(user.Email)
+		}
+		if worker == nil {
+			newWorker := models.Worker{
+				UserID:           &user.ID,
+				WorkerCode:       "wrk_" + strings.ToLower(uuid.New().String()[:6]),
+				Name:             user.Name,
+				AvatarURL:        user.AvatarURL,
+				Email:            user.Email,
+				Phone:            user.Phone,
+				ServiceTypes:     []string{"plumbing", "electricity", "carpenter", "cleaning", "other"},
+				Specializations:  []string{"General Maintenance", "Emergency Repairs", "Certified Technician"},
+				HourlyRate:       "Rs. 1,800 / visit",
+				RateValue:        1800.0,
+				Latitude:         6.9080,
+				Longitude:        79.8510,
+				OperatingAddress: "Galle Road, Kollupitiya, Colombo 03",
+				RadiusKm:         10.0,
+				IsVerified:       true,
+				IsActive:         true,
+				IsAvailableToday: true,
+				Badges:           []string{"Verified Pro", "Google Sign-In Partner"},
+			}
+			if err := s.workerRepo.Create(&newWorker); err == nil {
+				worker = &newWorker
+			}
+		}
+		if worker != nil {
+			w := mapWorkerToDTO(worker)
+			workerProfile = &w
+		}
+	}
+
+	userResp := dto.UserResponse{
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Phone:         user.Phone,
+		AvatarURL:     user.AvatarURL,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		WorkerProfile: workerProfile,
+		CreatedAt:     user.CreatedAt,
+	}
+
+	return &dto.AuthResponse{
+		Token:         token,
+		User:          userResp,
+		WorkerProfile: workerProfile,
 	}, nil
 }
 
@@ -144,7 +332,16 @@ func (s *authService) ForgotPassword(req *dto.ForgotPasswordRequest) error {
 		return errors.New("failed to process password")
 	}
 
-	return s.userRepo.UpdatePassword(user.ID, newHash)
+	if err := s.userRepo.UpdatePassword(user.ID, newHash); err != nil {
+		return err
+	}
+
+	// Send password reset security notification
+	if s.emailSvc != nil {
+		s.emailSvc.SendPasswordResetConfirmation(user)
+	}
+
+	return nil
 }
 
 func (s *authService) GetProfile(userID uuid.UUID) (*dto.UserResponse, error) {
@@ -153,14 +350,29 @@ func (s *authService) GetProfile(userID uuid.UUID) (*dto.UserResponse, error) {
 		return nil, errors.New("user not found")
 	}
 
+	var workerProfile *dto.WorkerResponse
+	if user.Role == "worker" || user.Role == "admin" {
+		if s.workerRepo != nil {
+			if worker, err := s.workerRepo.FindByUserID(user.ID); err == nil && worker != nil {
+				w := mapWorkerToDTO(worker)
+				workerProfile = &w
+			} else if worker, err := s.workerRepo.FindByEmail(user.Email); err == nil && worker != nil {
+				w := mapWorkerToDTO(worker)
+				workerProfile = &w
+			}
+		}
+	}
+
 	return &dto.UserResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Phone:     user.Phone,
-		AvatarURL: user.AvatarURL,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt,
+		ID:            user.ID,
+		Name:          user.Name,
+		Email:         user.Email,
+		Phone:         user.Phone,
+		AvatarURL:     user.AvatarURL,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		WorkerProfile: workerProfile,
+		CreatedAt:     user.CreatedAt,
 	}, nil
 }
 

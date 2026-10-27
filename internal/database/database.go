@@ -84,7 +84,7 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 	// Clean up demo bookings and test customer accounts for clean release
 	db.Exec("DELETE FROM bookings")
 	db.Exec("DELETE FROM user_locations")
-	db.Exec("DELETE FROM users WHERE role = 'customer' AND (email LIKE '%@test.lk' OR email = 'user@example.com')")
+	db.Exec("DELETE FROM users WHERE role = 'customer' AND email LIKE '%@test.lk'")
 	db.Exec("DELETE FROM workers WHERE worker_code LIKE 'wrk_test_%' OR worker_code LIKE 'wrk_gcs_%'")
 	db.Exec("UPDATE users SET is_active = true WHERE role = 'admin'")
 	db.Exec("UPDATE worker_reviews SET is_approved = true WHERE user_id IS NULL")

@@ -152,7 +152,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    540,
 				HourlyRate:       "Rs. 1,500 / visit",
 				RateValue:        1500.0,
+				Latitude:         6.8858,
+				Longitude:        79.8665,
+				OperatingAddress: "Havelock City Apartments, Colombo 05",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Master Plumber", "Verified ID", "Reliable Service", "Same-Day Service"},
 				Reviews: []models.WorkerReview{
@@ -176,7 +182,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    840,
 				HourlyRate:       "Rs. 1,800 / hour",
 				RateValue:        1800.0,
+				Latitude:         6.9080,
+				Longitude:        79.8510,
+				OperatingAddress: "Galle Road, Kollupitiya, Colombo 03",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Licensed Master", "10y Veteran", "Safety Compliant", "Zero Hazard Protocol"},
 				Reviews: []models.WorkerReview{
@@ -199,7 +211,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    710,
 				HourlyRate:       "Rs. 3,500 / day",
 				RateValue:        3500.0,
+				Latitude:         6.9150,
+				Longitude:        79.8680,
+				OperatingAddress: "Ward Place, Cinnamon Gardens, Colombo 07",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Master Mason", "Structural Builder", "Precision Tiler", "Quality Workmanship"},
 				Reviews: []models.WorkerReview{
@@ -222,7 +240,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    620,
 				HourlyRate:       "Rs. 2,000 / session",
 				RateValue:        2000.0,
+				Latitude:         6.8722,
+				Longitude:        79.8975,
+				OperatingAddress: "High Level Road, Nugegoda",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"5-Star Elite", "Super Clean Lead", "Background Checked", "Pet Friendly"},
 				Reviews: []models.WorkerReview{
@@ -245,7 +269,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    340,
 				HourlyRate:       "Rs. 2,500 / session",
 				RateValue:        2500.0,
+				Latitude:         6.9088,
+				Longitude:        79.8950,
+				OperatingAddress: "Rajagiriya Main Street, Sri Jayawardenepura Kotte",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Trained Caregiver", "CPR & First Aid", "Gentle Touch", "Verified Caregiver"},
 				Reviews: []models.WorkerReview{
@@ -268,7 +298,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    490,
 				HourlyRate:       "Rs. 2,000 / hour",
 				RateValue:        2000.0,
+				Latitude:         6.8375,
+				Longitude:        79.8655,
+				OperatingAddress: "Hotel Road, Mount Lavinia Beach Rd",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Master Woodworker", "Precision Joinery", "Artisan Quality", "Insured Pro"},
 				Reviews: []models.WorkerReview{
@@ -291,7 +327,13 @@ func SeedData(db *gorm.DB) error {
 				CompletedJobs:    580,
 				HourlyRate:       "Rs. 3,000 / meal",
 				RateValue:        3000.0,
+				Latitude:         6.9271,
+				Longitude:        79.8612,
+				OperatingAddress: "Colombo Fort / Central",
+				IsOpenForWork:    true,
+				RadiusKm:         10.0,
 				IsVerified:       true,
+				IsActive:         true,
 				IsAvailableToday: true,
 				Badges:           []string{"Executive Chef", "Food Safety Cert", "5-Star Dining", "Gourmet Pro"},
 				Reviews: []models.WorkerReview{
@@ -368,6 +410,97 @@ func SeedData(db *gorm.DB) error {
 		})
 		log.Println("Admin user verified and updated (admin@servicepro.com / admin123)")
 	}
+
+	// Seed Demo Customer Account (user@example.com / Password123!)
+	var demoCustomer models.User
+	customerHashed, _ := bcrypt.GenerateFromPassword([]byte("Password123!"), bcrypt.DefaultCost)
+	if err := db.Where("email = ? OR phone = ?", "user@example.com", "+94 77 123 4567").First(&demoCustomer).Error; err != nil {
+		customer := models.User{
+			Name:         "Customer Demo",
+			Email:        "user@example.com",
+			Phone:        "+94 77 123 4567",
+			PasswordHash: string(customerHashed),
+			Role:         "customer",
+			AvatarURL:    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80",
+			IsActive:     true,
+		}
+		if err := db.Create(&customer).Error; err == nil {
+			log.Println("Demo customer seeded successfully (user@example.com / Password123!)")
+		}
+	} else {
+		db.Model(&demoCustomer).Updates(map[string]interface{}{
+			"password_hash": string(customerHashed),
+			"role":          "customer",
+			"is_active":     true,
+		})
+	}
+
+	// Seed Ranga P User Account (rangap@niyogen.com / Password123!)
+	var rangaCustomer models.User
+	if err := db.Where("email = ? OR phone = ?", "rangap@niyogen.com", "+94 77 987 6543").First(&rangaCustomer).Error; err != nil {
+		ranga := models.User{
+			Name:         "Ranga P",
+			Email:        "rangap@niyogen.com",
+			Phone:        "+94 77 987 6543",
+			PasswordHash: string(customerHashed),
+			Role:         "customer",
+			AvatarURL:    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
+			IsActive:     true,
+		}
+		if err := db.Create(&ranga).Error; err == nil {
+			log.Println("Ranga P customer seeded successfully (rangap@niyogen.com / Password123!)")
+		}
+	} else {
+		db.Model(&rangaCustomer).Updates(map[string]interface{}{
+			"name":      "Ranga P",
+			"role":      "customer",
+			"is_active": true,
+		})
+	}
+
+	// Seed / Link Worker User Accounts for Workers
+	demoWorkerCodes := map[string]bool{
+		"wrk_1": true, "wrk_2": true, "wrk_3": true, "wrk_4": true,
+		"wrk_5": true, "wrk_6": true, "wrk_7": true,
+	}
+	var allWorkers []models.Worker
+	db.Find(&allWorkers)
+	for _, w := range allWorkers {
+		var wUser models.User
+		if err := db.Where("email = ? OR phone = ?", w.Email, w.Phone).First(&wUser).Error; err != nil {
+			newUser := models.User{
+				Name:         w.Name,
+				Email:        w.Email,
+				Phone:        w.Phone,
+				PasswordHash: string(customerHashed),
+				Role:         "worker",
+				AvatarURL:    w.AvatarURL,
+				IsActive:     true,
+			}
+			if err := db.Create(&newUser).Error; err == nil {
+				db.Model(&w).Update("user_id", newUser.ID)
+			}
+		} else {
+			updates := map[string]interface{}{
+				"role":      "worker",
+				"is_active": true,
+			}
+			// Only reset password for standard demo fixtures
+			if demoWorkerCodes[w.WorkerCode] {
+				updates["password_hash"] = string(customerHashed)
+			}
+			db.Model(&wUser).Updates(updates)
+			db.Model(&w).Update("user_id", wUser.ID)
+		}
+	}
+
+	// Ensure itranga@gmail.com has credentials it@371ananda
+	rangaHashed, _ := bcrypt.GenerateFromPassword([]byte("it@371ananda"), bcrypt.DefaultCost)
+	db.Model(&models.User{}).Where("email ILIKE ?", "itranga@gmail.com").Updates(map[string]interface{}{
+		"password_hash": string(rangaHashed),
+		"is_active":     true,
+	})
+	log.Println("User itranga@gmail.com verified with requested password")
 
 	return nil
 }

@@ -183,3 +183,39 @@ func (h *BookingHandler) UpdateBookingStatus(c *gin.Context) {
 
 	utils.JSONSuccess(c, http.StatusOK, "Booking status updated successfully", nil)
 }
+
+// RespondToJob godoc
+// @Summary Respond to job request (Accept or Reject)
+// @Tags Bookings
+// @Accept json
+// @Produce json
+// @Param id path string true "Booking UUID"
+// @Param request body dto.RespondJobRequest true "Job response payload"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/bookings/{id}/respond [post]
+func (h *BookingHandler) RespondToJob(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		utils.JSONBadRequest(c, "Invalid booking ID format", err.Error())
+		return
+	}
+
+	var req dto.RespondJobRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.JSONBadRequest(c, "Invalid response payload", err.Error())
+		return
+	}
+
+	booking, err := h.bookingService.RespondToJob(id, &req)
+	if err != nil {
+		utils.JSONBadRequest(c, err.Error(), nil)
+		return
+	}
+
+	msg := "Job accepted successfully"
+	if req.Action == "reject" {
+		msg = "Job request declined"
+	}
+	utils.JSONSuccess(c, http.StatusOK, msg, booking)
+}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"delivery-backend/internal/dto"
@@ -13,11 +14,151 @@ import (
 )
 
 type WorkerHandler struct {
-	workerService service.WorkerService
+	workerService  service.WorkerService
+	bookingService service.BookingService
 }
 
-func NewWorkerHandler(workerService service.WorkerService) *WorkerHandler {
-	return &WorkerHandler{workerService: workerService}
+func NewWorkerHandler(workerService service.WorkerService, bookingService service.BookingService) *WorkerHandler {
+	return &WorkerHandler{
+		workerService:  workerService,
+		bookingService: bookingService,
+	}
+}
+
+// GetNearbyWorkers godoc
+// @Summary List workers near a GPS location within radius
+// @Tags Workers
+// @Produce json
+// @Param lat query number false "Latitude (e.g. 6.9271)"
+// @Param lng query number false "Longitude (e.g. 79.8612)"
+// @Param service_type query string false "Service category filter"
+// @Param radius_km query number false "Radius in km (default 10)"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/workers/nearby [get]
+func (h *WorkerHandler) GetNearbyWorkers(c *gin.Context) {
+	var lat, lng, radiusKm float64
+	serviceType := c.Query("service_type")
+
+	if latStr := c.Query("lat"); latStr != "" {
+		_, _ = parseCoord(latStr, &lat)
+	}
+	if lngStr := c.Query("lng"); lngStr != "" {
+		_, _ = parseCoord(lngStr, &lng)
+	}
+	if radiusStr := c.Query("radius_km"); radiusStr != "" {
+		_, _ = parseCoord(radiusStr, &radiusKm)
+	}
+
+	workers, err := h.workerService.GetNearbyWorkers(lat, lng, serviceType, radiusKm)
+	if err != nil {
+		utils.JSONInternalServerError(c, "Failed to retrieve nearby workers", err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Nearby workers retrieved successfully", workers)
+}
+
+// UpdateLocationStatus godoc
+// @Summary Update worker operating location & open for work status
+// @Tags Workers
+// @Accept json
+// @Produce json
+// @Param id path string true "Worker UUID or code"
+// @Param request body dto.UpdateWorkerLocationStatusRequest true "Location and Status Payload"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/workers/{id}/location-status [patch]
+func (h *WorkerHandler) UpdateLocationStatus(c *gin.Context) {
+	idOrCode := c.Param("id")
+	worker, err := h.workerService.GetWorkerByIDOrCode(idOrCode)
+	if err != nil {
+		utils.JSONNotFound(c, "Worker not found")
+		return
+	}
+
+	var req dto.UpdateWorkerLocationStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.JSONBadRequest(c, "Invalid status update payload", err.Error())
+		return
+	}
+
+	updated, err := h.workerService.UpdateLocationStatus(worker.ID, &req)
+	if err != nil {
+		utils.JSONBadRequest(c, "Failed to update location & status", err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Operating location & availability updated successfully", updated)
+}
+
+// GetAvailableJobs godoc
+// @Summary Get incoming available jobs within 10km radius for worker
+// @Tags Workers
+// @Produce json
+// @Param id path string true "Worker UUID or code"
+// @Param lat query number false "Current Latitude"
+// @Param lng query number false "Current Longitude"
+// @Param radius_km query number false "Radius in km (default 10)"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/workers/{id}/jobs/available [get]
+func (h *WorkerHandler) GetAvailableJobs(c *gin.Context) {
+	idOrCode := c.Param("id")
+	worker, err := h.workerService.GetWorkerByIDOrCode(idOrCode)
+	if err != nil {
+		utils.JSONNotFound(c, "Worker not found")
+		return
+	}
+
+	var lat, lng, radiusKm float64
+	if latStr := c.Query("lat"); latStr != "" {
+		_, _ = parseCoord(latStr, &lat)
+	}
+	if lngStr := c.Query("lng"); lngStr != "" {
+		_, _ = parseCoord(lngStr, &lng)
+	}
+	if radiusStr := c.Query("radius_km"); radiusStr != "" {
+		_, _ = parseCoord(radiusStr, &radiusKm)
+	}
+
+	jobs, err := h.bookingService.GetAvailableJobsForWorker(worker.ID, lat, lng, radiusKm)
+	if err != nil {
+		utils.JSONInternalServerError(c, "Failed to retrieve available jobs", err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Available jobs retrieved successfully", jobs)
+}
+
+// GetWorkerBookings godoc
+// @Summary Get active and past jobs for a specific worker
+// @Tags Workers
+// @Produce json
+// @Param id path string true "Worker UUID or code"
+// @Success 200 {object} utils.StandardResponse
+// @Router /api/v1/workers/{id}/bookings [get]
+func (h *WorkerHandler) GetWorkerBookings(c *gin.Context) {
+	idOrCode := c.Param("id")
+	worker, err := h.workerService.GetWorkerByIDOrCode(idOrCode)
+	if err != nil {
+		utils.JSONNotFound(c, "Worker not found")
+		return
+	}
+
+	bookings, err := h.bookingService.GetWorkerBookings(worker.ID)
+	if err != nil {
+		utils.JSONInternalServerError(c, "Failed to retrieve worker bookings", err.Error())
+		return
+	}
+
+	utils.JSONSuccess(c, http.StatusOK, "Worker bookings retrieved successfully", bookings)
+}
+
+func parseCoord(s string, target *float64) (float64, error) {
+	var val float64
+	_, err := fmt.Sscanf(s, "%f", &val)
+	if err == nil {
+		*target = val
+	}
+	return val, err
 }
 
 // GetAllWorkers godoc

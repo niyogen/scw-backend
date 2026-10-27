@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_secure_pass_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set_DB_PASSWORD_in_.env}
       POSTGRES_DB: ${DB_NAME:-delivery_db}
     ports:
       - "5432:5432"
@@ -40,11 +40,17 @@ services:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres_secure_pass_2026}
+      - DB_PASSWORD=${DB_PASSWORD:?Set_DB_PASSWORD_in_.env}
       - DB_NAME=${DB_NAME:-delivery_db}
       - DB_SSLMODE=disable
-      - JWT_SECRET=${JWT_SECRET:-super-secret-jwt-key-change-in-production-12345}
+      - JWT_SECRET=${JWT_SECRET:?Set_JWT_SECRET_in_.env}
       - JWT_EXPIRES_IN_HOURS=72
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-itranga@gmail.com}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Sewa Home Services}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-itranga@gmail.com}
     depends_on:
       postgres:
         condition: service_healthy
