@@ -244,17 +244,13 @@ func (s *emailService) SendBookingCreatedCustomer(booking *models.Booking) {
 						<td style="padding: 6px 0; color: #64748b;">Address Details:</td>
 						<td style="padding: 6px 0; color: #475569;">%s</td>
 					</tr>
-					<tr>
-						<td style="padding: 8px 0 0 0; color: #64748b; font-size: 15px;">Total Amount:</td>
-						<td style="padding: 8px 0 0 0; font-size: 18px; font-weight: 800; color: #0f392b;">Rs. %.0f</td>
-					</tr>
 				</table>
 			</div>
 
 			<p style="color: #475569; font-size: 13.5px; line-height: 1.5;">
-				Our service specialists will review your request and confirm acceptance. You can track this request in real-time in the <strong>My Jobs</strong> section on your mobile app.
+				Our service specialists will review your request and confirm acceptance. Any pricing will be agreed directly with the worker; Smart Sewa does not collect payment on their behalf. You can track this request in real-time in the <strong>My Jobs</strong> section on your mobile app.
 			</p>
-		`, customerName, booking.BookingNumber, serviceTitle, statusBadge, booking.LocationTitle, booking.LocationSubtitle, booking.FinalAmount)
+		`, customerName, booking.BookingNumber, serviceTitle, statusBadge, booking.LocationTitle, booking.LocationSubtitle)
 
 		html := s.wrapResponsiveLayout("Service Booking Confirmation", content)
 		_ = s.SendEmail(customerEmail, subject, html)
@@ -369,17 +365,13 @@ func (s *emailService) SendBookingApprovedCustomer(booking *models.Booking, work
 						<td style="padding: 5px 0; color: #64748b;">Service Location:</td>
 						<td style="padding: 5px 0; color: #475569;">%s</td>
 					</tr>
-					<tr>
-						<td style="padding: 8px 0 0 0; color: #64748b;">Total Amount:</td>
-						<td style="padding: 8px 0 0 0; font-size: 17px; font-weight: 800; color: #0f392b;">Rs. %.0f</td>
-					</tr>
 				</table>
 			</div>
 
 			<p style="color: #475569; font-size: 13.5px; line-height: 1.5;">
-				You can contact your specialist directly via Phone or WhatsApp from the <strong>My Jobs</strong> screen in your Sewa mobile app.
+				You can contact your specialist directly via Phone or WhatsApp from the <strong>My Jobs</strong> screen in your Sewa mobile app. Payment is handled directly between you and the specialist — Smart Sewa does not collect fees on their behalf.
 			</p>
-		`, customerName, workerName, serviceTitle, workerName, workerPhone, booking.BookingNumber, booking.LocationTitle, booking.FinalAmount)
+		`, customerName, workerName, serviceTitle, workerName, workerPhone, booking.BookingNumber, booking.LocationTitle)
 
 		html := s.wrapResponsiveLayout("Specialist Confirmed", content)
 		_ = s.SendEmail(customerEmail, subject, html)
@@ -429,17 +421,13 @@ func (s *emailService) SendBookingApprovedWorker(booking *models.Booking, worker
 						<td style="padding: 5px 0; color: #64748b;">Address:</td>
 						<td style="padding: 5px 0; font-weight: 600; color: #0f172a;">%s, %s</td>
 					</tr>
-					<tr>
-						<td style="padding: 8px 0 0 0; color: #64748b;">Your Payout:</td>
-						<td style="padding: 8px 0 0 0; font-size: 17px; font-weight: 800; color: #15803d;">Rs. %.0f</td>
-					</tr>
 				</table>
 			</div>
 
 			<p style="color: #475569; font-size: 13.5px; line-height: 1.5;">
-				When you arrive at the location, tap <strong>Start Work</strong> in your partner app. Once finished, tap <strong>Mark as Completed</strong>.
+				Agree on the price directly with the customer. When you arrive at the location, tap <strong>Start Work</strong> in your partner app. Once finished, tap <strong>Mark as Completed</strong>. Smart Sewa does not collect or settle payment on your behalf in this release.
 			</p>
-		`, workerName, booking.BookingNumber, customerName, customerPhone, booking.LocationTitle, booking.LocationSubtitle, booking.FinalAmount)
+		`, workerName, booking.BookingNumber, customerName, customerPhone, booking.LocationTitle, booking.LocationSubtitle)
 
 		html := s.wrapResponsiveLayout("Job Accepted Confirmation", content)
 		_ = s.SendEmail(workerEmail, subject, html)
@@ -505,21 +493,20 @@ func (s *emailService) SendBookingStatusUpdate(booking *models.Booking, newStatu
 				</p>
 			`, booking.BookingNumber, serviceTitle)
 		case "completed":
-			subject = fmt.Sprintf("🎉 Service Completed & Receipt - Order #%s", booking.BookingNumber)
+			subject = fmt.Sprintf("🎉 Service Completed - Order #%s", booking.BookingNumber)
 			title = "Service Completed"
 			body = fmt.Sprintf(`
 				<p style="color: #475569; font-size: 14px; line-height: 1.6;">
 					Your service for <strong>%s</strong> (Order #%s) has been marked as <strong>Completed</strong>.
 				</p>
 				<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 16px; margin: 16px 0;">
-					<div style="font-size: 13px; color: #166534;">Final Amount Settled:</div>
-					<div style="font-size: 20px; font-weight: 800; color: #15803d; margin-top: 4px;">Rs. %.0f</div>
+					<div style="font-size: 13px; color: #166534;">Payment is handled directly between you and the specialist.</div>
 					<div style="font-size: 12px; color: #15803d; margin-top: 6px;">✓ 7-Day Workmanship Warranty Active</div>
 				</div>
 				<p style="color: #475569; font-size: 13.5px; line-height: 1.5;">
 					Please take a moment in the Sewa mobile app to rate your experience and review your specialist.
 				</p>
-			`, serviceTitle, booking.BookingNumber, booking.FinalAmount)
+			`, serviceTitle, booking.BookingNumber)
 		case "cancelled":
 			subject = fmt.Sprintf("✕ Order Cancelled - Order #%s", booking.BookingNumber)
 			title = "Order Cancelled"
