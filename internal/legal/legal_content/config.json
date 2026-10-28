@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-27T00:00:00+00:00",
+  "data_controller": "Sunrise Holdings (Pvt) Ltd",
+  "app_name": "Smart Sewa",
+  "authoritative_language": "en",
+  "supported_languages": [
+    "en",
+    "si",
+    "ta"
+  ],
+  "pre_launch": true,
+  "documents": {
+    "user_tc": {
+      "id": "user_tc",
+      "label_en": "User Terms & Conditions",
+      "version": "1.0.0-draft.1",
+      "effective_date": "2026-10-27",
+      "paths": {
+        "en": "terms/en.md",
+        "si": "terms/si.md",
+        "ta": "terms/ta.md"
+      },
+      "hashes": {
+        "en": "34d09baa49c6afbf26b428b7a58185d789bc6579b62dddfc0f6667fc6912086a",
+        "si": "7546cb0a26ea1c067d648f3bf5437c452bc6ca7988ddef0097b54b48f0889ca0",
+        "ta": "e0ef206a607b5551696df720bde53c5b411bc60a5eb1581d9435fef6df40fb79"
+      }
+    },
+    "user_privacy": {
+      "id": "user_privacy",
+      "label_en": "User Privacy Policy",
+      "version": "1.0.0-draft.1",
+      "effective_date": "2026-10-27",
+      "paths": {
+        "en": "privacy/en.md",
+        "si": "privacy/si.md",
+        "ta": "privacy/ta.md"
+      },
+      "hashes": {
+        "en": "8b322116e9d0b1c9feb982f4ad4ed35d8272648052f32f9d8fd9ef4cd2e563af",
+        "si": "6db6017eb36df842d83395c2125627c15a3eb8427eb7de7c8108ffb27889eb78",
+        "ta": "b0bddee6bf874f92f326bd4e080d38da589b8ec1931c122c70ddaaa5804bfc59"
+      }
+    }
+  }
+}

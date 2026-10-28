@@ -13,6 +13,18 @@ type RegisterRequest struct {
 	Password        string `json:"password" binding:"required,min=6"`
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=Password"`
 	AvatarURL       string `json:"avatar_url"`
+
+	// DateOfBirth is required for PDPA signup (server computes age
+	// and rejects <18). Format: ISO-8601 YYYY-MM-DD. The field is
+	// required at the application layer, not the binding layer, so
+	// existing legacy clients get a clearer error message
+	// ("date_of_birth is required") rather than a generic 400.
+	DateOfBirth string `json:"date_of_birth"`
+
+	// Consents is the list of consent records captured at signup
+	// (typically user_tc, user_privacy, age_confirmation). Required
+	// at the application layer for the same reason.
+	Consents []ConsentInput `json:"consents"`
 }
 
 type LoginRequest struct {

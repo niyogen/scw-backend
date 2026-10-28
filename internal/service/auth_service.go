@@ -4,14 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"delivery-backend/internal/config"
 	"delivery-backend/internal/dto"
+	"delivery-backend/internal/legal"
 	"delivery-backend/internal/models"
 	"delivery-backend/internal/repository"
 	"delivery-backend/internal/utils"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type AuthService interface {
@@ -31,23 +34,59 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo   repository.UserRepository
-	workerRepo repository.WorkerRepository
-	emailSvc   EmailService
-	cfg        *config.Config
+	userRepo    repository.UserRepository
+	workerRepo  repository.WorkerRepository
+	consentRepo repository.ConsentRepository
+	consentSvc  ConsentService
+	emailSvc    EmailService
+	cfg         *config.Config
 }
 
-func NewAuthService(userRepo repository.UserRepository, workerRepo repository.WorkerRepository, emailSvc EmailService, cfg *config.Config) AuthService {
+func NewAuthService(
+	userRepo repository.UserRepository,
+	workerRepo repository.WorkerRepository,
+	consentRepo repository.ConsentRepository,
+	consentSvc ConsentService,
+	emailSvc EmailService,
+	cfg *config.Config,
+) AuthService {
 	return &authService{
-		userRepo:   userRepo,
-		workerRepo: workerRepo,
-		emailSvc:   emailSvc,
-		cfg:        cfg,
+		userRepo:    userRepo,
+		workerRepo:  workerRepo,
+		consentRepo: consentRepo,
+		consentSvc:  consentSvc,
+		emailSvc:    emailSvc,
+		cfg:         cfg,
 	}
 }
 
+// parseDateOfBirth accepts the YYYY-MM-DD format the mobile app and
+// web app both send. Returns an age-gate-friendly error if parse fails.
+func parseDateOfBirth(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}, errors.New("date_of_birth is required")
+	}
+	dob, err := time.Parse("2006-01-02", s)
+	if err != nil {
+		return time.Time{}, errors.New("date_of_birth must be in YYYY-MM-DD format")
+	}
+	return dob, nil
+}
+
+// ageOn computes integer years at `at` for a person born on `dob`.
+// Matches the web service's ageOn() in mockup/src/lib/consent/service.ts.
+func ageOn(dob, at time.Time) int {
+	years := at.Year() - dob.Year()
+	if at.Month() < dob.Month() ||
+		(at.Month() == dob.Month() && at.Day() < dob.Day()) {
+		years--
+	}
+	return years
+}
+
 func (s *authService) Register(req *dto.RegisterRequest) (*dto.AuthResponse, error) {
-	// Check if email or phone already registered
+	// 1. Validate uniqueness up front (fast fail without hashing).
 	if existing, _ := s.userRepo.FindByEmail(req.Email); existing != nil {
 		return nil, errors.New("email is already registered")
 	}
@@ -55,16 +94,62 @@ func (s *authService) Register(req *dto.RegisterRequest) (*dto.AuthResponse, err
 		return nil, errors.New("phone number is already registered")
 	}
 
+	// 2. Server-side age gate. Client-provided age_confirmation is NOT
+	//    trusted alone — we parse the DOB and compute age here, so a
+	//    tampered client can't bypass the 18+ requirement.
+	dob, err := parseDateOfBirth(req.DateOfBirth)
+	if err != nil {
+		return nil, err
+	}
+	if ageOn(dob, time.Now().UTC()) < 18 {
+		return nil, errors.New("under_minimum_age")
+	}
+
+	// 3. Validate the consent payload shape and verify every hash
+	//    before we create any rows. The transaction below trusts
+	//    that these inputs are legitimate.
+	if len(req.Consents) == 0 {
+		return nil, errors.New("consents are required (user_tc, user_privacy, age_confirmation)")
+	}
+	seenTypes := map[string]bool{}
+	for i := range req.Consents {
+		input := req.Consents[i]
+		if err := s.consentSvc.VerifyAndNormalizeInput(&input); err != nil {
+			return nil, err
+		}
+		req.Consents[i] = input // normalise in place
+		if seenTypes[input.ConsentType] {
+			return nil, fmt.Errorf("duplicate consent_type in payload: %s", input.ConsentType)
+		}
+		seenTypes[input.ConsentType] = true
+	}
+	for _, required := range []string{"user_tc", "user_privacy", "age_confirmation"} {
+		if !seenTypes[required] {
+			return nil, fmt.Errorf("missing required consent: %s", required)
+		}
+	}
+
+	// 4. Extra invariant for age_confirmation: the client-supplied
+	//    hash must match sha256("age/1.0.0\ndob:" + DOB) with the
+	//    DOB we just parsed. This closes the loophole where a client
+	//    could send a valid-format age hash for a DIFFERENT date of
+	//    birth than it submitted on the form.
+	expectedAgeHash := legal.ComputeAgeHash(req.DateOfBirth)
+	for _, c := range req.Consents {
+		if c.ConsentType == "age_confirmation" && c.DisplayedTextHash != expectedAgeHash {
+			return nil, errors.New("consent_validation_failed:age_hash_mismatch_vs_dob")
+		}
+	}
+
+	// 5. Prepare the user row.
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return nil, errors.New("failed to hash password")
 	}
-
 	avatarURL := req.AvatarURL
 	if avatarURL == "" {
 		avatarURL = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80"
 	}
-
 	user := models.User{
 		Name:         req.Name,
 		Email:        req.Email,
@@ -73,9 +158,22 @@ func (s *authService) Register(req *dto.RegisterRequest) (*dto.AuthResponse, err
 		AvatarURL:    avatarURL,
 		Role:         "customer",
 		IsActive:     true,
+		DateOfBirth:  &dob,
 	}
 
-	if err := s.userRepo.Create(&user); err != nil {
+	// 6. Create the user AND all consent rows in one transaction.
+	//    If any consent insert fails, the whole thing rolls back —
+	//    PDPA invariant: no user without consent evidence.
+	err = s.consentRepo.DB().Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&user).Error; err != nil {
+			return err
+		}
+		if _, err := s.consentSvc.PersistInTx(tx, user.ID, req.Consents, "mobile"); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 

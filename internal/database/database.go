@@ -64,6 +64,7 @@ func InitDB(cfg *config.Config) (*gorm.DB, error) {
 		&models.Booking{},
 		&models.Voucher{},
 		&models.UserLocation{},
+		&models.ConsentRecord{},
 	)
 	if err != nil {
 		return nil, err
