@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -14,8 +15,58 @@ import (
 	"delivery-backend/internal/utils"
 
 	"github.com/google/uuid"
+	"google.golang.org/api/idtoken"
 	"gorm.io/gorm"
 )
+
+// googleTokenValidator is isolated behind an interface so unit tests
+// can inject a fake validator and exercise the real GoogleLogin flow
+// without needing a live Google token at test time. Production uses
+// realGoogleValidator which delegates to google.golang.org/api/idtoken.
+type googleTokenValidator interface {
+	Validate(ctx context.Context, idToken, audience string) (*googleTokenPayload, error)
+}
+
+type googleTokenPayload struct {
+	Email         string
+	EmailVerified bool
+	Name          string
+	Picture       string
+	Subject       string // Google user id (sub claim)
+}
+
+type realGoogleValidator struct{}
+
+func (realGoogleValidator) Validate(ctx context.Context, idToken, audience string) (*googleTokenPayload, error) {
+	payload, err := idtoken.Validate(ctx, idToken, audience)
+	if err != nil {
+		return nil, err
+	}
+	out := &googleTokenPayload{Subject: payload.Subject}
+	if v, ok := payload.Claims["email"].(string); ok {
+		out.Email = v
+	}
+	// Google's email_verified comes through as either bool or string
+	// depending on token source; handle both.
+	switch v := payload.Claims["email_verified"].(type) {
+	case bool:
+		out.EmailVerified = v
+	case string:
+		out.EmailVerified = v == "true"
+	}
+	if v, ok := payload.Claims["name"].(string); ok {
+		out.Name = v
+	}
+	if v, ok := payload.Claims["picture"].(string); ok {
+		out.Picture = v
+	}
+	return out, nil
+}
+
+// pkgGoogleValidator is the validator the running service uses; a
+// package-level var so tests can override it. Production always uses
+// the real validator.
+var pkgGoogleValidator googleTokenValidator = realGoogleValidator{}
 
 type AuthService interface {
 	Register(req *dto.RegisterRequest) (*dto.AuthResponse, error)
@@ -282,18 +333,53 @@ func (s *authService) Login(req *dto.LoginRequest) (*dto.AuthResponse, error) {
 }
 
 func (s *authService) GoogleLogin(req *dto.GoogleLoginRequest) (*dto.AuthResponse, error) {
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+	// Resolution order for (email, name, avatarURL):
+	//   1. If req.IDToken is non-empty, validate it against GOOGLE_CLIENT_ID
+	//      via google.golang.org/api/idtoken. On success, use the verified
+	//      claims (ignoring any client-supplied email/name — the client
+	//      could lie, Google's signature cannot).
+	//   2. If no id_token:
+	//        - production  → reject (closes the impersonation hole; this
+	//          is why /auth/google was gated out of prod in a previous PR).
+	//        - non-prod    → fall back to client-supplied email+name (mock
+	//          flow kept for staging/CI test convenience).
+	var email, name, avatarURL string
+
+	trimmedToken := strings.TrimSpace(req.IDToken)
+	if trimmedToken != "" {
+		if s.cfg.GoogleClientID == "" {
+			return nil, errors.New("google oauth client id is not configured on this backend")
+		}
+		payload, err := pkgGoogleValidator.Validate(context.Background(), trimmedToken, s.cfg.GoogleClientID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid google id token: %w", err)
+		}
+		if payload.Email == "" {
+			return nil, errors.New("google token missing email claim")
+		}
+		if !payload.EmailVerified {
+			return nil, errors.New("google email not verified; cannot sign in")
+		}
+		email = strings.ToLower(strings.TrimSpace(payload.Email))
+		name = strings.TrimSpace(payload.Name)
+		avatarURL = payload.Picture
+	} else {
+		if s.cfg.Environment == "production" {
+			return nil, errors.New("google id_token is required")
+		}
+		// Dev / staging mock path.
+		email = strings.ToLower(strings.TrimSpace(req.Email))
+		name = strings.TrimSpace(req.Name)
+		avatarURL = req.AvatarURL
+	}
+
 	if email == "" {
 		return nil, errors.New("email is required for Google login")
 	}
-
-	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		parts := strings.Split(email, "@")
 		name = parts[0]
 	}
-
-	avatarURL := req.AvatarURL
 	if avatarURL == "" {
 		avatarURL = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80"
 	}

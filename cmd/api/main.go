@@ -97,16 +97,12 @@ func main() {
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
-			// /auth/google is deliberately NOT registered in production.
-			// The current handler accepts any email+name without verifying
-			// a real Google ID token (it's a dev-only mock). Leaving it
-			// enabled in prod would let anyone impersonate any Smart Sewa
-			// account via the API. Task #22 wires real Google OAuth with
-			// server-side token validation; once that lands, remove this
-			// guard.
-			if cfg.Environment != "production" {
-				authGroup.POST("/google", authHandler.GoogleLogin)
-			}
+			// /auth/google now validates the id_token against GOOGLE_CLIENT_ID
+			// (see auth_service.go GoogleLogin). In production the id_token
+			// is REQUIRED — a request without one is rejected. In non-prod
+			// a mock fallback accepts client-supplied email+name for test
+			// convenience. Safe to expose in prod now.
+			authGroup.POST("/google", authHandler.GoogleLogin)
 			authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 		}
 

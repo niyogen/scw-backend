@@ -72,9 +72,13 @@ type ForgotPasswordRequest struct {
 }
 
 type GoogleLoginRequest struct {
+	// IDToken is the Google ID token obtained from the native sign-in
+	// flow (Flutter google_sign_in package). Required in production;
+	// optional in non-prod where a mock fallback uses the email + name
+	// fields below. See service.GoogleLogin for the resolution order.
 	IDToken     string `json:"id_token"`
 	AccessToken string `json:"access_token"`
-	Email       string `json:"email" binding:"required"`
+	Email       string `json:"email"` // mock-fallback only; verified claims from IDToken take precedence
 	Name        string `json:"name"`
 	AvatarURL   string `json:"avatar_url"`
 	Role        string `json:"role"` // "customer" or "worker"
