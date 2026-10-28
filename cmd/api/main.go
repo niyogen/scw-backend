@@ -65,10 +65,12 @@ func main() {
 	locationSvc := service.NewLocationService(locationRepo)
 	bookingSvc := service.NewBookingService(bookingRepo, voucherRepo, workerRepo, serviceRepo, emailSvc)
 	mediaSvc := service.NewMediaService(cfg)
+	dsrSvc := service.NewDSRService(db, userRepo, bookingRepo, locationRepo, workerRepo, consentRepo, consentSvc, emailSvc)
 
 	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authSvc)
 	consentHandler := handler.NewConsentHandler(consentSvc)
+	dsrHandler := handler.NewDSRHandler(dsrSvc)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogSvc)
 	workerHandler := handler.NewWorkerHandler(workerSvc, bookingSvc)
 	bookingHandler := handler.NewBookingHandler(bookingSvc)
@@ -209,6 +211,14 @@ func main() {
 				consentGroup.POST("/withdraw", consentHandler.Withdraw)
 				consentGroup.GET("/status", consentHandler.Status)
 				consentGroup.GET("/history", consentHandler.History)
+			}
+
+			// Data Subject Rights (PDPA §20-22 — see Task #13)
+			dsrGroup := protected.Group("/dsr")
+			{
+				dsrGroup.GET("/export", dsrHandler.Export)
+				dsrGroup.POST("/erasure", dsrHandler.RequestErasure)
+				dsrGroup.DELETE("/erasure", dsrHandler.CancelErasure)
 			}
 		}
 	}
