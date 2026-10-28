@@ -3,16 +3,16 @@
 **Version:** 1.0.0-draft.1
 **Effective date:** 2026-10-27
 **Authoritative language:** English
-**Data controller:** Sunrise Holdings (Pvt) Ltd
+**Data controller:** Sunrise Ceylon Holdings (Pvt) Ltd
 **Internal reference:** LP-01-USER-TC
 
-> **Pre-launch draft.** Fields marked `[TBD before launch]` must be filled before any public release. Final text awaits review by qualified Sri Lankan counsel. Any material revision bumps the version and forces re-consent of all users.
+> **Pre-launch draft (v2).** Core company details filled. Remaining `[TBD before launch]` markers (registration number, external processor names, DPA contact) still require values before public release. Final text awaits review by qualified Sri Lankan counsel. Any material revision bumps the version and forces re-consent of all users.
 
 ---
 
 ## 1. About these Terms
 
-Welcome. These Terms & Conditions (the "**Terms**") are a legal agreement between you (the "**User**", "**you**") and `Sunrise Holdings (Pvt) Ltd` (registration number `[TBD before launch]`, of `[TBD before launch]`) ("**Company**", "**we**", "**us**") governing your use of the `Smart Sewa` mobile application and any related services (together the "**Platform**").
+Welcome. These Terms & Conditions (the "**Terms**") are a legal agreement between you (the "**User**", "**you**") and `Sunrise Ceylon Holdings (Pvt) Ltd` (registration number `[TBD before launch]`, of `291/8, Edward Avenue, Colombo 05, Sri Lanka`) ("**Company**", "**we**", "**us**") governing your use of the `Smart Sewa` mobile application and any related services (together the "**Platform**").
 
 By creating an account, accessing, or using the Platform, you confirm that you have read, understood, and agree to be bound by these Terms and by our Privacy Policy and Community Guidelines.
 
@@ -225,7 +225,7 @@ We may detect and prevent circumvention using account, device, network, and iden
 - extend the original ban;
 - pursue any other remedy available to us at law.
 
-A person who has been permanently banned may apply for reinstatement in writing to `[TBD before launch]`. Reinstatement is at our sole discretion.
+A person who has been permanently banned may apply for reinstatement in writing to `info@smartsewa.com`. Reinstatement is at our sole discretion.
 
 ## 15. Content and intellectual property
 
@@ -390,6 +390,6 @@ We will cooperate reasonably with any regulator investigation.
 
 ## 24. Contact
 
-Support: `[TBD before launch]`
-Data Protection Officer: `[TBD before launch]`
-Postal: `[TBD before launch]`
+Support: `info@smartsewa.com`  ·  Hotline: `+94 74 317 7718`
+Data Protection Officer: `info@smartsewa.com`
+Postal: `291/8, Edward Avenue, Colombo 05, Sri Lanka`
