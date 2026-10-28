@@ -6,9 +6,11 @@ require (
 	cloud.google.com/go/storage v1.67.1
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/gomarkdown/markdown v0.0.0-20261026184151-79e163b7b632
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.58.0
+	google.golang.org/api v0.309.0
 	gorm.io/driver/postgres v1.6.2
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.2
@@ -84,7 +86,6 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	google.golang.org/api v0.309.0 // indirect
 	google.golang.org/genproto v0.0.0-20260715232425-e75dac1f907d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260715232425-e75dac1f907d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
