@@ -25,6 +25,11 @@ type User struct {
 	AvatarURL    string         `gorm:"size:500" json:"avatar_url"`
 	Role         string         `gorm:"size:50;default:'customer'" json:"role"` // customer, admin, worker
 	IsActive     bool           `gorm:"default:true" json:"is_active"`
+	// DateOfBirth is captured at signup for the server-side 18+ age gate
+	// and recorded as a hashed age_confirmation consent. Nullable so
+	// existing pre-launch users keep working; new signups must provide
+	// it (enforced in auth_service.Register).
+	DateOfBirth  *time.Time     `gorm:"type:date" json:"date_of_birth,omitempty"`
 	Bookings     []Booking      `gorm:"foreignKey:UserID" json:"bookings,omitempty"`
 	Addresses    []UserLocation `gorm:"foreignKey:UserID" json:"addresses,omitempty"`
 }

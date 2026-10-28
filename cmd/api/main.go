@@ -12,6 +12,7 @@ import (
 	"delivery-backend/internal/config"
 	"delivery-backend/internal/database"
 	"delivery-backend/internal/handler"
+	"delivery-backend/internal/legal"
 	"delivery-backend/internal/middleware"
 	"delivery-backend/internal/repository"
 	"delivery-backend/internal/service"
@@ -30,6 +31,15 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// 1b. Fail fast if the embedded legal content bundle didn't load.
+	// We can't accept consents without it (hash verification depends on it).
+	if err := legal.LoadError(); err != nil {
+		log.Fatalf("Failed to load legal content bundle: %v", err)
+	}
+	if legal.IsPreLaunch() {
+		log.Printf("⚠️  legal_content is marked pre_launch=true — [TBD before launch] placeholders remain")
+	}
+
 	// 2. Initialize PostgreSQL Database
 	db, err := database.InitDB(cfg)
 	if err != nil {
@@ -43,10 +53,12 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	voucherRepo := repository.NewVoucherRepository(db)
 	locationRepo := repository.NewLocationRepository(db)
+	consentRepo := repository.NewConsentRepository(db)
 
 	// 4. Initialize Services
 	emailSvc := service.NewEmailService(cfg)
-	authSvc := service.NewAuthService(userRepo, workerRepo, emailSvc, cfg)
+	consentSvc := service.NewConsentService(consentRepo)
+	authSvc := service.NewAuthService(userRepo, workerRepo, consentRepo, consentSvc, emailSvc, cfg)
 	serviceCatalogSvc := service.NewServiceCatalogService(serviceRepo)
 	workerSvc := service.NewWorkerService(workerRepo, userRepo)
 	voucherSvc := service.NewVoucherService(voucherRepo)
@@ -56,6 +68,7 @@ func main() {
 
 	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authSvc)
+	consentHandler := handler.NewConsentHandler(consentSvc)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogSvc)
 	workerHandler := handler.NewWorkerHandler(workerSvc, bookingSvc)
 	bookingHandler := handler.NewBookingHandler(bookingSvc)
@@ -178,6 +191,15 @@ func main() {
 				bookingGroup.GET("", bookingHandler.GetMyBookings)
 				bookingGroup.GET("/:id", bookingHandler.GetBookingByID)
 				bookingGroup.POST("/:id/cancel", bookingHandler.CancelBooking)
+			}
+
+			// Consent ledger (PDPA — see RFC-LLD-Consent)
+			consentGroup := protected.Group("/consent")
+			{
+				consentGroup.POST("/grant", consentHandler.Grant)
+				consentGroup.POST("/withdraw", consentHandler.Withdraw)
+				consentGroup.GET("/status", consentHandler.Status)
+				consentGroup.GET("/history", consentHandler.History)
 			}
 		}
 	}

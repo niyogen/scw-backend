@@ -214,7 +214,7 @@ func TestGoogleLogin_RangaUser(t *testing.T) {
 		JWTExpiresIn: 24,
 	}
 
-	authSvc := NewAuthService(userRepo, workerRepo, nil, cfg)
+	authSvc := NewAuthService(userRepo, workerRepo, nil, nil, nil, cfg)
 
 	req := &dto.GoogleLoginRequest{
 		Email:     "rangap@niyogen.com",
@@ -263,7 +263,7 @@ func TestGoogleLogin_WorkerMode(t *testing.T) {
 		JWTExpiresIn: 24,
 	}
 
-	authSvc := NewAuthService(userRepo, workerRepo, nil, cfg)
+	authSvc := NewAuthService(userRepo, workerRepo, nil, nil, nil, cfg)
 
 	req := &dto.GoogleLoginRequest{
 		Email:     "rangap@niyogen.com",
