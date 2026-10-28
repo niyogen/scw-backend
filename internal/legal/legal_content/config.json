@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-27T00:00:00+00:00",
-  "data_controller": "Sunrise Holdings (Pvt) Ltd",
+  "generated_at": "2026-10-28T00:00:00+00:00",
+  "data_controller": "Sunrise Ceylon Holdings (Pvt) Ltd",
   "app_name": "Smart Sewa",
   "authoritative_language": "en",
   "supported_languages": [
@@ -14,33 +14,33 @@
     "user_tc": {
       "id": "user_tc",
       "label_en": "User Terms & Conditions",
-      "version": "1.0.0-draft.1",
-      "effective_date": "2026-10-27",
+      "version": "1.0.0-draft.2",
+      "effective_date": "2026-10-28",
       "paths": {
         "en": "terms/en.md",
         "si": "terms/si.md",
         "ta": "terms/ta.md"
       },
       "hashes": {
-        "en": "34d09baa49c6afbf26b428b7a58185d789bc6579b62dddfc0f6667fc6912086a",
-        "si": "7546cb0a26ea1c067d648f3bf5437c452bc6ca7988ddef0097b54b48f0889ca0",
-        "ta": "e0ef206a607b5551696df720bde53c5b411bc60a5eb1581d9435fef6df40fb79"
+        "en": "43b500b07115785b33cda91205d2be752ac6cc961aadec34c7b4b3facdd6b2a7",
+        "si": "f2345e09ad907100dff44865bf6e47425a746e0c4abcc53105242b930f8c4768",
+        "ta": "ec76051d85e9f5804740851602d2888a18fc2f8f67f3e4bcb8456b9ba276e4c7"
       }
     },
     "user_privacy": {
       "id": "user_privacy",
       "label_en": "User Privacy Policy",
-      "version": "1.0.0-draft.1",
-      "effective_date": "2026-10-27",
+      "version": "1.0.0-draft.2",
+      "effective_date": "2026-10-28",
       "paths": {
         "en": "privacy/en.md",
         "si": "privacy/si.md",
         "ta": "privacy/ta.md"
       },
       "hashes": {
-        "en": "8b322116e9d0b1c9feb982f4ad4ed35d8272648052f32f9d8fd9ef4cd2e563af",
-        "si": "6db6017eb36df842d83395c2125627c15a3eb8427eb7de7c8108ffb27889eb78",
-        "ta": "b0bddee6bf874f92f326bd4e080d38da589b8ec1931c122c70ddaaa5804bfc59"
+        "en": "9a99320681a5aed0bb1162d874e8b7282515f0eb04f1fa1020567983afbf6a87",
+        "si": "b05d4dc4c9a1c4de5b503c647d52de5440696cf48925d43ea7443b75d848e349",
+        "ta": "9774ba94ec6058960e6bfa55909517fa4efa1d2d7d3b0f8bd8aebb525582b440"
       }
     }
   }

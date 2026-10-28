@@ -3,19 +3,19 @@
 **Version:** 1.0.0-draft.1
 **Effective date:** 2026-10-27
 **Authoritative language:** English
-**Data controller:** Sunrise Holdings (Pvt) Ltd
-**Data Protection Officer:** [TBD before launch]
+**Data controller:** Sunrise Ceylon Holdings (Pvt) Ltd
+**Data Protection Officer:** info@smartsewa.com
 **Internal reference:** LP-02-USER-PP
 
-> **Pre-launch draft.** Fields marked `[TBD before launch]` must be filled before any public release. Final text awaits review by qualified Sri Lankan counsel.
+> **Pre-launch draft (v2).** Core company details filled. Remaining `[TBD before launch]` markers (registration number, external processor names, DPA contact) still require values before public release. Final text awaits review by qualified Sri Lankan counsel.
 
 ---
 
 ## 1. About this policy
 
-This Privacy Policy explains how `Sunrise Holdings (Pvt) Ltd` ("**we**") collects, uses, shares, and safeguards personal data of Users of the `Smart Sewa` Platform.
+This Privacy Policy explains how `Sunrise Ceylon Holdings (Pvt) Ltd` ("**we**") collects, uses, shares, and safeguards personal data of Users of the `Smart Sewa` Platform.
 
-We are the **data controller** for User personal data. Our Data Protection Officer can be contacted at `[TBD before launch]`.
+We are the **data controller** for User personal data. Our Data Protection Officer can be contacted at `info@smartsewa.com`.
 
 This policy is written to comply with Sri Lanka's **Personal Data Protection Act, No. 9 of 2022** ("**PDPA**"). Where a jurisdiction with different or stricter requirements applies to a specific User, we will honour the stricter requirement.
 
@@ -126,7 +126,7 @@ Per Consent Register §8 you have the following rights:
 - **Right to withdraw consent** where consent is the basis.
 - **Right to lodge a complaint** with the Data Protection Authority.
 
-To exercise any right, use Settings → Privacy → **My data** in the app, or contact `[TBD before launch]`. We aim to respond within 7 days; the statutory maximum is 30 days.
+To exercise any right, use Settings → Privacy → **My data** in the app, or contact `info@smartsewa.com`. We aim to respond within 7 days; the statutory maximum is 30 days.
 
 **Fees.** The first request in respect of any right is free. For repeated or manifestly excessive requests we may charge a reasonable fee reflecting the administrative cost, as permitted by law; we will tell you in advance if this applies.
 
@@ -155,5 +155,5 @@ We may update this policy from time to time in our sole discretion. **Material c
 
 ## 13. Contact
 
-Data Protection Officer: `[TBD before launch]`
+Data Protection Officer: `info@smartsewa.com`
 Data Protection Authority (Sri Lanka): `[TBD before launch]`
