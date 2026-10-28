@@ -29,9 +29,21 @@ type User struct {
 	// and recorded as a hashed age_confirmation consent. Nullable so
 	// existing pre-launch users keep working; new signups must provide
 	// it (enforced in auth_service.Register).
-	DateOfBirth  *time.Time     `gorm:"type:date" json:"date_of_birth,omitempty"`
-	Bookings     []Booking      `gorm:"foreignKey:UserID" json:"bookings,omitempty"`
-	Addresses    []UserLocation `gorm:"foreignKey:UserID" json:"addresses,omitempty"`
+	DateOfBirth *time.Time `gorm:"type:date" json:"date_of_birth,omitempty"`
+
+	// DSR right-to-erasure flow (PDPA §22).
+	// When the user requests account deletion, we set ErasureRequestedAt
+	// and move the account to is_active=false. During the 7-day grace
+	// window the user can cancel via /dsr/erasure/cancel, which clears
+	// ErasureRequestedAt and sets ScheduledDeletionAt to NULL. After the
+	// grace window a background job (not yet shipped — v1 is manual admin
+	// run) hard-deletes related rows and anonymises reviews. Consent
+	// records are preserved indefinitely per PDPA audit requirements.
+	ErasureRequestedAt  *time.Time `json:"erasure_requested_at,omitempty"`
+	ScheduledDeletionAt *time.Time `json:"scheduled_deletion_at,omitempty"`
+
+	Bookings  []Booking      `gorm:"foreignKey:UserID" json:"bookings,omitempty"`
+	Addresses []UserLocation `gorm:"foreignKey:UserID" json:"addresses,omitempty"`
 }
 
 // ServiceItem represents available household & on-demand services
