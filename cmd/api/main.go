@@ -78,6 +78,7 @@ func main() {
 	locationHandler := handler.NewLocationHandler(locationSvc)
 	mediaHandler := handler.NewMediaHandler(mediaSvc)
 	healthHandler := handler.NewHealthHandler(db)
+	legalHandler := handler.NewLegalHandler()
 
 	// 6. Router Setup
 	r := gin.New()
@@ -88,6 +89,11 @@ func main() {
 	// Health and Root
 	r.GET("/", healthHandler.RootHandler)
 	r.GET("/health", healthHandler.HealthCheck)
+
+	// Public legal documents (Play Console / App Store privacy policy URLs
+	// point at these). Served as HTML, no auth required.
+	r.GET("/legal/terms", legalHandler.Terms)
+	r.GET("/legal/privacy", legalHandler.Privacy)
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
