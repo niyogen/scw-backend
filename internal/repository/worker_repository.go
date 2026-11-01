@@ -25,6 +25,9 @@ type WorkerRepository interface {
 	DeleteReview(id uuid.UUID) error
 	UpdateWorkerRating(workerID uuid.UUID) error
 	IncrementCompletedJobs(workerID uuid.UUID) error
+
+	// Task #25 — admin paginated listing by onboarding status.
+	ListByStatus(status string, offset, limit int) ([]models.Worker, int64, error)
 }
 
 type workerRepository struct {
@@ -40,7 +43,11 @@ func (r *workerRepository) FindAll(serviceType string, availableOnly bool, all b
 	query := r.db.Preload("Reviews", "is_approved = ?", true).Order("rating DESC, completed_jobs DESC")
 
 	if !all {
-		query = query.Where("is_active = ?", true)
+		// Customer-facing listing: only approved + active workers. The
+		// mobile app's /workers and /workers/nearby both go through here
+		// so this filter closes the "pending applicant becomes visible"
+		// hole that existed before Task #25.
+		query = query.Where("is_active = ? AND (status = ? OR status IS NULL OR status = ?)", true, "approved", "")
 	}
 
 	if availableOnly {
@@ -54,6 +61,25 @@ func (r *workerRepository) FindAll(serviceType string, availableOnly bool, all b
 
 	err := query.Find(&workers).Error
 	return workers, err
+}
+
+// ListByStatus is the admin paginated query. status="" returns every
+// row regardless of onboarding state (handy for an unfiltered admin
+// view). Pagination uses offset+limit; callers compute offset from the
+// requested page.
+func (r *workerRepository) ListByStatus(status string, offset, limit int) ([]models.Worker, int64, error) {
+	var workers []models.Worker
+	var total int64
+
+	query := r.db.Model(&models.Worker{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&workers).Error
+	return workers, total, err
 }
 
 func (r *workerRepository) FindByIDOrCode(idOrCode string) (*models.Worker, error) {

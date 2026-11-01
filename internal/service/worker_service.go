@@ -438,6 +438,17 @@ func mapWorkerToDTO(w *models.Worker) dto.WorkerResponse {
 		}
 	}
 
+	var kyc *dto.KYCDocumentsOutput
+	if w.KYCDocuments.NICFront != "" || w.KYCDocuments.NICBack != "" ||
+		w.KYCDocuments.Selfie != "" || w.KYCDocuments.TradeCert != "" {
+		kyc = &dto.KYCDocumentsOutput{
+			NICFront:  w.KYCDocuments.NICFront,
+			NICBack:   w.KYCDocuments.NICBack,
+			Selfie:    w.KYCDocuments.Selfie,
+			TradeCert: w.KYCDocuments.TradeCert,
+		}
+	}
+
 	return dto.WorkerResponse{
 		ID:               w.ID,
 		UserID:           w.UserID,
@@ -466,5 +477,17 @@ func mapWorkerToDTO(w *models.Worker) dto.WorkerResponse {
 		IsAvailableToday: w.IsAvailableToday,
 		Badges:           w.Badges,
 		Reviews:          reviews,
+		Status:           w.Status,
+		NICNumber:        w.NICNumber,
+		City:             w.City,
+		ServiceAreas:     w.ServiceAreas,
+		KYCDocuments:     kyc,
+		ApprovedAt:       w.ApprovedAt,
+		ApprovedBy:       w.ApprovedBy,
+		RejectedAt:       w.RejectedAt,
+		RejectedReason:   w.RejectedReason,
+		BannedAt:         w.BannedAt,
+		BannedReason:     w.BannedReason,
+		BannedBy:         w.BannedBy,
 	}
 }

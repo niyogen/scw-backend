@@ -103,6 +103,40 @@ type Worker struct {
 	IsAvailableToday bool           `gorm:"default:true" json:"is_available_today"`
 	Badges           []string       `gorm:"type:jsonb;serializer:json" json:"badges"`
 	Reviews          []WorkerReview `gorm:"foreignKey:WorkerID" json:"reviews,omitempty"`
+
+	// Task #25 — Worker self-service onboarding + admin approval.
+	//
+	// Status transitions (admin-driven):
+	//   pending   → approved (admin.approve)   is_active=true,  approved_at/by
+	//   pending   → rejected (admin.reject)    is_active=false, rejected_reason/at
+	//   approved  → banned   (admin.ban)       is_active=false, banned_reason/at/by
+	//   banned    → approved (admin.unban)     is_active=true,  banned_* cleared
+	//
+	// NIC is captured here (not on users) because workers are the only
+	// role that submits NIC — keep PII minimised on users table.
+	Status         string     `gorm:"size:50;default:'approved';index" json:"status"` // pending|approved|rejected|banned
+	NICNumber      string     `gorm:"size:50" json:"nic_number,omitempty"`
+	City           string     `gorm:"size:100" json:"city,omitempty"`
+	ServiceAreas   []string   `gorm:"type:jsonb;serializer:json" json:"service_areas,omitempty"`
+	KYCDocuments   KYCDocs    `gorm:"type:jsonb;serializer:json" json:"kyc_documents,omitempty"`
+	ApprovedAt     *time.Time `json:"approved_at,omitempty"`
+	ApprovedBy     *uuid.UUID `gorm:"type:uuid" json:"approved_by,omitempty"`
+	RejectedAt     *time.Time `json:"rejected_at,omitempty"`
+	RejectedReason string     `gorm:"type:text" json:"rejected_reason,omitempty"`
+	BannedAt       *time.Time `json:"banned_at,omitempty"`
+	BannedReason   string     `gorm:"type:text" json:"banned_reason,omitempty"`
+	BannedBy       *uuid.UUID `gorm:"type:uuid" json:"banned_by,omitempty"`
+}
+
+// KYCDocs holds the GCS URIs for each KYC document the applicant uploads.
+// Stored as JSONB on the workers.kyc_documents column via GORM's json
+// serializer so we don't need a separate table for a small, fixed-shape
+// payload. Fields are optional — a pending applicant may only have some.
+type KYCDocs struct {
+	NICFront  string `json:"nic_front,omitempty"`
+	NICBack   string `json:"nic_back,omitempty"`
+	Selfie    string `json:"selfie,omitempty"`
+	TradeCert string `json:"trade_cert,omitempty"`
 }
 
 // WorkerReview holds customer reviews for workers

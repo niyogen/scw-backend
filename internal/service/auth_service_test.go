@@ -206,6 +206,24 @@ func (m *mockWorkerRepo) IncrementCompletedJobs(workerID uuid.UUID) error {
 	return nil
 }
 
+func (m *mockWorkerRepo) ListByStatus(status string, offset, limit int) ([]models.Worker, int64, error) {
+	var list []models.Worker
+	for _, w := range m.workers {
+		if status == "" || w.Status == status {
+			list = append(list, *w)
+		}
+	}
+	total := int64(len(list))
+	if offset >= len(list) {
+		return nil, total, nil
+	}
+	end := offset + limit
+	if end > len(list) {
+		end = len(list)
+	}
+	return list[offset:end], total, nil
+}
+
 func TestGoogleLogin_RangaUser(t *testing.T) {
 	userRepo := newMockUserRepo()
 	workerRepo := newMockWorkerRepo()
