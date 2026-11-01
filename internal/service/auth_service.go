@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -82,6 +83,10 @@ type AuthService interface {
 	UpdateCustomer(id uuid.UUID, req *dto.UpdateCustomerRequest) (*dto.UserResponse, error)
 	ToggleCustomerActive(id uuid.UUID, isActive bool) error
 	DeleteCustomer(id uuid.UUID) error
+	// Task #24 — admin-invite flow. Creates a new user with role=admin
+	// and emails them a password-reset link. Only admins may invoke this
+	// (gating is at the middleware layer).
+	AdminInvite(req *dto.AdminInviteRequest) (*dto.AdminInviteResponse, error)
 }
 
 type authService struct {
@@ -734,6 +739,72 @@ func (s *authService) ToggleCustomerActive(id uuid.UUID, isActive bool) error {
 
 func (s *authService) DeleteCustomer(id uuid.UUID) error {
 	return s.userRepo.Delete(id)
+}
+
+// AdminInvite creates a new admin account and emails a password-set link.
+// We never return the password in the response body — it stays only in
+// the recipient's inbox. The newly-created row is inactive until the
+// invitee uses /auth/forgot-password to set a password.
+//
+// This endpoint is gated by middleware.RequireRole("admin") so only an
+// existing admin can call it (bootstrapping the first admin is a
+// separate out-of-band flow — see cmd/seed-admin).
+func (s *authService) AdminInvite(req *dto.AdminInviteRequest) (*dto.AdminInviteResponse, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if existing, _ := s.userRepo.FindByEmail(email); existing != nil {
+		return nil, errors.New("an account with this email already exists")
+	}
+
+	// Random hashed password — not communicated anywhere. The invitee
+	// must reset it via the email link.
+	randPass := uuid.New().String() + uuid.New().String()
+	hashed, err := utils.HashPassword(randPass)
+	if err != nil {
+		return nil, errors.New("failed to secure account")
+	}
+
+	phone := strings.TrimSpace(req.Phone)
+	if phone == "" {
+		// Users table has a unique index on phone. Give the invitee a
+		// temporary placeholder they can edit later from their profile.
+		phone = "+94 00 " + strings.ReplaceAll(uuid.New().String()[:7], "-", "0")
+	}
+
+	user := models.User{
+		Name:         req.Name,
+		Email:        email,
+		Phone:        phone,
+		PasswordHash: hashed,
+		AvatarURL:    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80",
+		Role:         "admin",
+		IsActive:     false, // flipped true the first time the invitee resets their password
+	}
+	if err := s.userRepo.Create(&user); err != nil {
+		return nil, fmt.Errorf("failed to create admin account: %w", err)
+	}
+
+	// Build the password-reset URL. The frontend route must call
+	// POST /api/v1/auth/forgot-password with the user's email + the
+	// new password they type in. The ?invited=1 query flag lets the
+	// frontend show "Welcome, set your admin password" copy instead
+	// of the standard forgot-password screen.
+	resetBase := strings.TrimRight(s.cfg.AppBaseURL, "/")
+	// AppBaseURL defaults to the backend origin, which isn't a UI. If
+	// an operator sets APP_BASE_URL to the webapp origin at deploy
+	// time, the link lands in the right place. We use it either way.
+	resetURL := fmt.Sprintf("%s/auth/forgot-password?email=%s&invited=1", resetBase, url.QueryEscape(email))
+
+	if s.emailSvc != nil {
+		s.emailSvc.SendAdminInvite(&user, resetURL)
+	}
+
+	return &dto.AdminInviteResponse{
+		UserID:     user.ID,
+		Email:      user.Email,
+		Name:       user.Name,
+		Role:       user.Role,
+		InviteSent: true,
+	}, nil
 }
 
 func mapUserToDTO(u *models.User) dto.UserResponse {

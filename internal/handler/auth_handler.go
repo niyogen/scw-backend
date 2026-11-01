@@ -322,6 +322,28 @@ func (h *AuthHandler) ToggleCustomerStatus(c *gin.Context) {
 	utils.JSONSuccess(c, http.StatusOK, "Customer status updated successfully", nil)
 }
 
+// AdminInvite godoc
+// @Summary Invite a new admin by email (admin-only). Sends a password-set link.
+// @Tags Admin - Users
+// @Accept json
+// @Produce json
+// @Param request body dto.AdminInviteRequest true "Invite payload"
+// @Success 201 {object} utils.StandardResponse
+// @Router /api/v1/auth/admin-invite [post]
+func (h *AuthHandler) AdminInvite(c *gin.Context) {
+	var req dto.AdminInviteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.JSONBadRequest(c, "Invalid invite payload", err.Error())
+		return
+	}
+	res, err := h.authService.AdminInvite(&req)
+	if err != nil {
+		utils.JSONBadRequest(c, err.Error(), nil)
+		return
+	}
+	utils.JSONSuccess(c, http.StatusCreated, "Admin invitation sent", res)
+}
+
 // DeleteCustomer godoc
 // @Summary Delete customer account (Admin)
 // @Tags Admin - Customers
