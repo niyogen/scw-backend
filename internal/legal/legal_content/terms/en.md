@@ -225,7 +225,7 @@ We may detect and prevent circumvention using account, device, network, and iden
 - extend the original ban;
 - pursue any other remedy available to us at law.
 
-A person who has been permanently banned may apply for reinstatement in writing to `info@smartsewa.com`. Reinstatement is at our sole discretion.
+A person who has been permanently banned may apply for reinstatement in writing to `info@smartsewa.lk`. Reinstatement is at our sole discretion.
 
 ## 15. Content and intellectual property
 
@@ -390,6 +390,6 @@ We will cooperate reasonably with any regulator investigation.
 
 ## 24. Contact
 
-Support: `info@smartsewa.com`  ·  Hotline: `+94 74 317 7718`
-Data Protection Officer: `info@smartsewa.com`
+Support: `info@smartsewa.lk`  ·  Hotline: `+94 74 317 7718`
+Data Protection Officer: `info@smartsewa.lk`
 Postal: `291/8, Edward Avenue, Colombo 05, Sri Lanka`

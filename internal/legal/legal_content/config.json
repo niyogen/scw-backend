@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-28T00:00:00+00:00",
+  "generated_at": "2026-11-01T00:00:00+00:00",
   "data_controller": "Sunrise Ceylon Holdings (Pvt) Ltd",
   "app_name": "Smart Sewa",
   "authoritative_language": "en",
@@ -14,7 +14,7 @@
     "user_tc": {
       "id": "user_tc",
       "label_en": "User Terms & Conditions",
-      "version": "1.0.0-draft.2",
+      "version": "1.0.0-draft.3",
       "effective_date": "2026-10-28",
       "paths": {
         "en": "terms/en.md",
@@ -22,15 +22,15 @@
         "ta": "terms/ta.md"
       },
       "hashes": {
-        "en": "43b500b07115785b33cda91205d2be752ac6cc961aadec34c7b4b3facdd6b2a7",
-        "si": "f2345e09ad907100dff44865bf6e47425a746e0c4abcc53105242b930f8c4768",
-        "ta": "ec76051d85e9f5804740851602d2888a18fc2f8f67f3e4bcb8456b9ba276e4c7"
+        "en": "9abe3e190a418315be9989e5676f243ea2a4782efff8a55fe404f358abe14cd2",
+        "si": "6092b44f6e04581124ba5b9fdf8e3fabd030d2fd6ebde77d3f120d26e28fe405",
+        "ta": "f9446e85037131fc3c78b8176d8d08274fe83fb8ea8a1caa50e6c557928808d2"
       }
     },
     "user_privacy": {
       "id": "user_privacy",
       "label_en": "User Privacy Policy",
-      "version": "1.0.0-draft.2",
+      "version": "1.0.0-draft.3",
       "effective_date": "2026-10-28",
       "paths": {
         "en": "privacy/en.md",
@@ -38,9 +38,9 @@
         "ta": "privacy/ta.md"
       },
       "hashes": {
-        "en": "9a99320681a5aed0bb1162d874e8b7282515f0eb04f1fa1020567983afbf6a87",
-        "si": "b05d4dc4c9a1c4de5b503c647d52de5440696cf48925d43ea7443b75d848e349",
-        "ta": "9774ba94ec6058960e6bfa55909517fa4efa1d2d7d3b0f8bd8aebb525582b440"
+        "en": "9fdce662401dc9379872414be9db1842b5831baee2bb2ce261538f7d958d24ad",
+        "si": "c809eee6183442ed09c288021fe98aa2795c9ab7765f9e4efda647c370318ef9",
+        "ta": "16acc50c660fda50e6aa8db3ab02149b79a0e432986ef4867375be865983d4db"
       }
     }
   }
