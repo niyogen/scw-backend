@@ -20,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+
 func main() {
 	// 1. Load configuration
 	cfg, err := config.LoadConfig()
@@ -67,12 +68,22 @@ func main() {
 	mediaSvc := service.NewMediaService(cfg)
 	dsrSvc := service.NewDSRService(db, userRepo, bookingRepo, locationRepo, workerRepo, consentRepo, consentSvc, emailSvc)
 
+	// Worker onboarding service — Task #25. The GCS client is optional;
+	// signed URLs fall back to a stub if credentials aren't present (dev,
+	// CI). This keeps the branch compilable + runnable everywhere.
+	gcsClient, gcsErr := service.NewGCSClientOrNil(context.Background())
+	if gcsErr != nil {
+		log.Printf("[onboarding] GCS client not initialized (%v); KYC signed URLs will use dev stub", gcsErr)
+	}
+	workerOnboardingSvc := service.NewWorkerOnboardingService(workerRepo, userRepo, cfg, gcsClient)
+
 	// 5. Initialize Handlers
 	authHandler := handler.NewAuthHandler(authSvc)
 	consentHandler := handler.NewConsentHandler(consentSvc)
 	dsrHandler := handler.NewDSRHandler(dsrSvc)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogSvc)
 	workerHandler := handler.NewWorkerHandler(workerSvc, bookingSvc)
+	workerOnboardingHandler := handler.NewWorkerOnboardingHandler(workerOnboardingSvc)
 	bookingHandler := handler.NewBookingHandler(bookingSvc)
 	voucherHandler := handler.NewVoucherHandler(voucherSvc)
 	locationHandler := handler.NewLocationHandler(locationSvc)
@@ -133,7 +144,13 @@ func main() {
 			workerGroup.GET("/:id/jobs/available", workerHandler.GetAvailableJobs)
 			workerGroup.GET("/:id/bookings", workerHandler.GetWorkerBookings)
 			workerGroup.POST("", workerHandler.CreateWorker)
+			// Legacy self-service worker registration — kept intact so
+			// the live Vercel site (still pointing at the old payload)
+			// doesn't break while the rebuild rolls out. The new flow
+			// below (/register-v2) is the one Task #25 added, with
+			// status=pending + admin approval loop.
 			workerGroup.POST("/register", workerHandler.RegisterWorker)
+			workerGroup.POST("/register-v2", workerOnboardingHandler.RegisterSelfService)
 			workerGroup.PUT("/:id", workerHandler.UpdateWorker)
 			workerGroup.PATCH("/:id/status", workerHandler.ToggleWorkerStatus)
 			workerGroup.DELETE("/:id", workerHandler.DeleteWorker)
@@ -155,8 +172,16 @@ func main() {
 		v1.POST("/upload/avatar", mediaHandler.UploadPhoto)
 		v1.GET("/media/*filepath", mediaHandler.ServeMedia)
 
-		// Admin routes (Bookings, Customers)
+		// Admin routes (Bookings, Customers, Workers, Reviews).
+		//
+		// Task #24: this group is now wrapped in AuthMiddleware + RequireRole
+		// so no admin endpoint is reachable without a role=admin JWT. Prior
+		// to this, /admin/* was publicly reachable — a hardening bug fixed
+		// here along with the admin-invite flow (POST /auth/admin-invite,
+		// also behind the same middleware).
 		adminGroup := v1.Group("/admin")
+		adminGroup.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+		adminGroup.Use(middleware.RequireRole("admin"))
 		{
 			// Bookings
 			adminGroup.GET("/bookings", bookingHandler.GetAllBookings)
@@ -174,6 +199,24 @@ func main() {
 			adminGroup.GET("/reviews", workerHandler.GetAdminReviews)
 			adminGroup.PATCH("/reviews/:id/status", workerHandler.UpdateReviewStatus)
 			adminGroup.DELETE("/reviews/:id", workerHandler.DeleteReview)
+
+			// Worker onboarding review (Task #25)
+			adminGroup.GET("/workers", workerOnboardingHandler.AdminListWorkers)
+			adminGroup.GET("/workers/:id", workerOnboardingHandler.AdminGetWorker)
+			adminGroup.POST("/workers/:id/approve", workerOnboardingHandler.AdminApproveWorker)
+			adminGroup.POST("/workers/:id/reject", workerOnboardingHandler.AdminRejectWorker)
+			adminGroup.POST("/workers/:id/ban", workerOnboardingHandler.AdminBanWorker)
+			adminGroup.POST("/workers/:id/unban", workerOnboardingHandler.AdminUnbanWorker)
+		}
+
+		// Admin-only auth management. Admin-invite lives OUTSIDE the
+		// /admin group so the URL reads naturally (/auth/admin-invite),
+		// but it's gated by the same AuthMiddleware + RequireRole chain.
+		adminAuthGroup := v1.Group("/auth")
+		adminAuthGroup.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+		adminAuthGroup.Use(middleware.RequireRole("admin"))
+		{
+			adminAuthGroup.POST("/admin-invite", authHandler.AdminInvite)
 		}
 
 		// Protected User routes
@@ -196,6 +239,15 @@ func main() {
 
 			// Worker Reviews
 			protected.POST("/workers/:id/reviews", workerHandler.AddWorkerReview)
+
+			// Worker self-service onboarding (Task #25). These endpoints
+			// are authenticated — the applicant must have a JWT (issued by
+			// the public /workers/register-v2 or by /auth/login after an
+			// admin approves them).
+			protected.GET("/workers/me/status", workerOnboardingHandler.GetMyStatus)
+			protected.PUT("/workers/me", workerOnboardingHandler.UpdateMyApplication)
+			protected.POST("/workers/:id/kyc-upload-url", workerOnboardingHandler.SignKYCUploadURL)
+			protected.PUT("/workers/:id/kyc", workerOnboardingHandler.UpdateKYC)
 
 			// Booking Endpoints
 			bookingGroup := protected.Group("/bookings")

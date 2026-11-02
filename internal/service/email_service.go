@@ -22,6 +22,10 @@ type EmailService interface {
 	SendBookingRejectedCustomer(booking *models.Booking, worker *models.Worker)
 	SendBookingStatusUpdate(booking *models.Booking, newStatus string)
 	SendPasswordResetConfirmation(user *models.User)
+	// SendAdminInvite emails a password-set invitation to a newly-created
+	// admin. The link points at the webapp forgot-password page where the
+	// invitee enters a new password. We never embed a password in the body.
+	SendAdminInvite(user *models.User, resetURL string)
 }
 
 type emailService struct {
@@ -558,6 +562,45 @@ func (s *emailService) SendPasswordResetConfirmation(user *models.User) {
 		`, userName, userEmail)
 
 		html := s.wrapResponsiveLayout("Password Reset Confirmation", content)
+		_ = s.SendEmail(userEmail, subject, html)
+	}()
+}
+
+// 8. Send admin-invite welcome email. Payload intentionally does NOT
+// include a password; the invitee must set one via the forgot-password
+// flow (link embedded here).
+func (s *emailService) SendAdminInvite(user *models.User, resetURL string) {
+	if user == nil || user.Email == "" {
+		return
+	}
+
+	go func() {
+		userEmail := user.Email
+		userName := user.Name
+		if userName == "" {
+			userName = "Admin"
+		}
+
+		subject := "You've been invited as a Smart Sewa admin"
+
+		content := fmt.Sprintf(`
+			<p style="font-size: 16px; color: #1e293b; margin-top: 0;">Hello <strong>%s</strong>,</p>
+			<p style="color: #475569; font-size: 14px; line-height: 1.6;">
+				You've been invited as an administrator on the Smart Sewa platform. Click the button below to set your password and sign in.
+			</p>
+			<div style="text-align: center; margin: 24px 0;">
+				<a href="%s" style="background: #0f392b; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;">Set your admin password</a>
+			</div>
+			<p style="color: #475569; font-size: 13.5px; line-height: 1.5;">
+				If the button doesn't work, copy and paste this link into your browser:<br>
+				<span style="color: #0f392b; word-break: break-all;">%s</span>
+			</p>
+			<p style="color: #b91c1c; font-size: 12.5px; line-height: 1.5; margin-top: 20px;">
+				If you weren't expecting this invitation, you can ignore this email — your account won't be active until you set a password.
+			</p>
+		`, userName, resetURL, resetURL)
+
+		html := s.wrapResponsiveLayout("Admin Invitation", content)
 		_ = s.SendEmail(userEmail, subject, html)
 	}()
 }
